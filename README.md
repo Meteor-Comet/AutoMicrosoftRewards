@@ -20,10 +20,6 @@
 - `desktop_search.py`: 桌面端专用搜索工具
 - `mobile_search.py`: 移动端专用搜索工具
 
-### 🚀 启动脚本
-- `search.bat`: Windows批处理文件，启动完整搜索
-- `desktop_search.bat`: Windows批处理文件，启动桌面端搜索
-- `mobile_search.bat`: Windows批处理文件，启动移动端搜索
 
 ### 🛠️ 辅助工具
 - `validate_cookies.py`: Cookies验证工具（诊断cookies问题）
