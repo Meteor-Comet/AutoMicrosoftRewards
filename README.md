@@ -1,6 +1,7 @@
 # Microsoft Rewards 自动化工具
 
 这是一个用于自动化Microsoft Rewards搜索的工具，包含获取cookies和自动搜索功能。
+（移动端搜索暂时失效，PC端正常使用）
 
 ## 功能特点
 
