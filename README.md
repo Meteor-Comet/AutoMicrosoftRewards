@@ -1,4 +1,5 @@
 # Microsoft Rewards 自动化工具
+引荐链接：https://rewards.bing.com/welcome?rh=A8FDDB45&ref=rafsrchae
 
 这是一个用于自动化Microsoft Rewards搜索的工具，包含获取cookies和自动搜索功能。
 （移动端搜索暂时失效，PC端正常使用）
