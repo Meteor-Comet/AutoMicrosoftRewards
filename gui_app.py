@@ -1448,22 +1448,36 @@ class MicrosoftRewardsGUI:
 
 def main():
     """主函数"""
-    root = tk.Tk()
-    app = MicrosoftRewardsGUI(root)
-    
-    # 设置窗口关闭事件
-    def on_closing():
-        if app.is_running:
-            if messagebox.askokcancel("退出", "程序正在运行中，确定要退出吗？"):
-                app.is_running = False
+    try:
+        root = tk.Tk()
+        app = MicrosoftRewardsGUI(root)
+        
+        # 设置窗口关闭事件
+        def on_closing():
+            if app.is_running:
+                if messagebox.askokcancel("退出", "程序正在运行中，确定要退出吗？"):
+                    app.is_running = False
+                    root.destroy()
+            else:
                 root.destroy()
-        else:
-            root.destroy()
-    
-    root.protocol("WM_DELETE_WINDOW", on_closing)
-    
-    # 启动GUI
-    root.mainloop()
+        
+        root.protocol("WM_DELETE_WINDOW", on_closing)
+        
+        # 启动GUI
+        root.mainloop()
+    except Exception as e:
+        # 如果GUI启动失败，显示错误信息
+        import traceback
+        error_msg = f"程序启动失败:\n{str(e)}\n\n详细错误信息:\n{traceback.format_exc()}"
+        
+        try:
+            # 尝试显示错误对话框
+            messagebox.showerror("启动错误", error_msg)
+        except:
+            # 如果连错误对话框都无法显示，写入文件
+            with open("error_log.txt", "w", encoding="utf-8") as f:
+                f.write(error_msg)
+            print(error_msg)
 
 if __name__ == "__main__":
     main() 

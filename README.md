@@ -162,6 +162,14 @@ pip install selenium
    - 检查网络连接
    - 确保cookies有效
 
+6. **PyInstaller打包问题**
+   - **错误**: `Failed to execute script 'pyiboot01 bootstrap'`
+   - **解决方案**: 
+     - 使用 `python build_simple.py` 进行简单打包
+     - 或使用 `python build_exe_stable.py` 进行稳定打包
+     - 确保Python环境干净，重新安装PyInstaller
+     - 尝试在管理员权限下运行打包脚本
+
 ### 日志说明
 
 程序会显示详细的执行日志：

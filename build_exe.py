@@ -63,6 +63,20 @@ def build_exe():
         "--hidden-import=selenium.webdriver.support.ui",
         "--hidden-import=selenium.webdriver.support",
         "--hidden-import=selenium.common.exceptions",
+        "--hidden-import=tkinter",
+        "--hidden-import=tkinter.ttk",
+        "--hidden-import=tkinter.messagebox",
+        "--hidden-import=tkinter.scrolledtext",
+        "--hidden-import=json",
+        "--hidden-import=threading",
+        "--hidden-import=time",
+        "--hidden-import=os",
+        "--hidden-import=random",
+        "--hidden-import=sys",
+        "--hidden-import=datetime",
+        "--hidden-import=webbrowser",
+        "--collect-all=selenium",
+        "--collect-all=tkinter",
         "gui_app.py"
     ]
     
