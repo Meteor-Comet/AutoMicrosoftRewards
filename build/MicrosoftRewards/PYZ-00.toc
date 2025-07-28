@@ -8,6 +8,7 @@
   ('_pydecimal', 'F:\\python\\Lib\\_pydecimal.py', 'PYMODULE'),
   ('_strptime', 'F:\\python\\Lib\\_strptime.py', 'PYMODULE'),
   ('_threading_local', 'F:\\python\\Lib\\_threading_local.py', 'PYMODULE'),
+  ('account_manager', 'D:\\MicrosoftRewards\\account_manager.py', 'PYMODULE'),
   ('argparse', 'F:\\python\\Lib\\argparse.py', 'PYMODULE'),
   ('ast', 'F:\\python\\Lib\\ast.py', 'PYMODULE'),
   ('asyncio', 'F:\\python\\Lib\\asyncio\\__init__.py', 'PYMODULE'),

@@ -5,7 +5,7 @@ a = Analysis(
     ['gui_app.py'],
     pathex=[],
     binaries=[],
-    datas=[('chromedriver.exe', '.'), ('custom_search_terms.py', '.')],
+    datas=[('chromedriver.exe', '.'), ('custom_search_terms.py', '.'), ('account_manager.py', '.')],
     hiddenimports=['selenium', 'selenium.webdriver', 'selenium.webdriver.chrome.service', 'selenium.webdriver.common.by', 'selenium.webdriver.common.keys', 'selenium.webdriver.support.ui', 'selenium.webdriver.support', 'selenium.common.exceptions'],
     hookspath=[],
     hooksconfig={},

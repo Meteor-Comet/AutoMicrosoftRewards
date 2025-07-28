@@ -21,6 +21,9 @@ from selenium.common.exceptions import TimeoutException, NoSuchElementException
 from selenium.webdriver.chrome.service import Service
 from selenium.webdriver.common.keys import Keys
 
+# 导入账号管理模块
+from account_manager import AccountManager
+
 # 尝试导入自定义搜索词，如果没有则使用默认列表
 try:
     from custom_search_terms import CUSTOM_SEARCH_TERMS
@@ -44,11 +47,14 @@ class MicrosoftRewardsGUI:
     def __init__(self, root):
         self.root = root
         self.root.title("Microsoft Rewards 自动化工具")
-        self.root.geometry("800x600")
+        self.root.geometry("900x700")
         self.root.resizable(True, True)
         
         # 设置图标和样式
         self.setup_styles()
+        
+        # 初始化账号管理器
+        self.account_manager = AccountManager()
         
         # 创建主框架
         self.create_widgets()
@@ -82,6 +88,9 @@ class MicrosoftRewardsGUI:
         # 创建选项卡
         notebook = ttk.Notebook(self.root)
         notebook.pack(fill='both', expand=True, padx=10, pady=5)
+        
+        # 账号管理选项卡
+        self.create_account_tab(notebook)
         
         # 登录选项卡
         self.create_login_tab(notebook)
@@ -125,6 +134,10 @@ class MicrosoftRewardsGUI:
         self.stop_login_button = ttk.Button(button_frame, text="⏹️ 停止登录", 
                                            command=self.stop_login, state='disabled')
         self.stop_login_button.pack(side='left', padx=5)
+        
+        self.relogin_button = ttk.Button(button_frame, text="🔄 重新登录", 
+                                        command=self.relogin_current_account)
+        self.relogin_button.pack(side='left', padx=5)
         
         # 状态显示
         status_frame = ttk.LabelFrame(login_frame, text="登录状态", padding=10)
@@ -242,6 +255,66 @@ class MicrosoftRewardsGUI:
         self.terms_status_label = ttk.Label(terms_frame, text="")
         self.terms_status_label.pack(side='left', padx=10)
         
+        # 账号管理
+        account_settings_frame = ttk.LabelFrame(settings_frame, text="账号管理", padding=10)
+        account_settings_frame.pack(fill='x', padx=10, pady=5)
+        
+        self.refresh_accounts_button = ttk.Button(account_settings_frame, text="🔄 刷新账号列表", 
+                                                 command=self.refresh_account_list)
+        self.refresh_accounts_button.pack(side='left', padx=5)
+        
+        self.validate_all_cookies_button = ttk.Button(account_settings_frame, text="🔍 验证所有Cookies", 
+                                                     command=self.validate_all_cookies)
+        self.validate_all_cookies_button.pack(side='left', padx=5)
+        
+    def create_account_tab(self, notebook):
+        """创建账号管理选项卡"""
+        account_frame = ttk.Frame(notebook)
+        notebook.add(account_frame, text="👤 账号管理")
+        
+        # 账号列表框架
+        list_frame = ttk.LabelFrame(account_frame, text="账号列表", padding=10)
+        list_frame.pack(fill='both', expand=True, padx=10, pady=5)
+        
+        # 账号列表
+        self.account_listbox = tk.Listbox(list_frame, height=8)
+        self.account_listbox.pack(fill='both', expand=True, side='left')
+        
+        # 滚动条
+        scrollbar = ttk.Scrollbar(list_frame, orient="vertical", command=self.account_listbox.yview)
+        scrollbar.pack(side='right', fill='y')
+        self.account_listbox.configure(yscrollcommand=scrollbar.set)
+        
+        # 账号操作按钮
+        account_buttons_frame = ttk.Frame(account_frame)
+        account_buttons_frame.pack(fill='x', padx=10, pady=5)
+        
+        self.add_account_button = ttk.Button(account_buttons_frame, text="➕ 添加账号", 
+                                           command=self.add_account_dialog)
+        self.add_account_button.pack(side='left', padx=5)
+        
+        self.remove_account_button = ttk.Button(account_buttons_frame, text="🗑️ 删除账号", 
+                                              command=self.remove_account)
+        self.remove_account_button.pack(side='left', padx=5)
+        
+        self.switch_account_button = ttk.Button(account_buttons_frame, text="🔄 切换账号", 
+                                              command=self.switch_account)
+        self.switch_account_button.pack(side='left', padx=5)
+        
+        self.save_cookies_button = ttk.Button(account_buttons_frame, text="💾 保存Cookies", 
+                                             command=self.save_cookies)
+        self.save_cookies_button.pack(side='left', padx=5)
+        
+        # 当前账号信息
+        current_frame = ttk.LabelFrame(account_frame, text="当前账号", padding=10)
+        current_frame.pack(fill='x', padx=10, pady=5)
+        
+        self.current_account_label = ttk.Label(current_frame, text="未选择账号")
+        self.current_account_label.pack(anchor='w')
+        
+        # 刷新账号列表
+        self.refresh_account_list()
+    
     def create_log_tab(self, notebook):
         """创建日志选项卡"""
         log_frame = ttk.Frame(notebook)
@@ -515,6 +588,18 @@ class MicrosoftRewardsGUI:
                     json.dump(cookies, f, ensure_ascii=False, indent=2)
                 
                 self.log_message(f"✅ 成功保存 {len(cookies)} 个cookies", "SUCCESS")
+                
+                # 自动保存到当前账号
+                current_account = self.account_manager.get_current_account_name()
+                if current_account:
+                    success, message = self.account_manager.save_current_cookies(current_account)
+                    if success:
+                        self.log_message(f"✅ {message}", "SUCCESS")
+                    else:
+                        self.log_message(f"⚠️ 保存到账号失败: {message}", "WARNING")
+                else:
+                    self.log_message("ℹ️ 未选择账号，cookies仅保存到临时文件", "INFO")
+                
                 self.update_status("登录成功，cookies已保存")
                 
         except Exception as e:
@@ -550,7 +635,12 @@ class MicrosoftRewardsGUI:
         
         # 检查cookies
         if not os.path.exists("cookies.txt"):
-            messagebox.showerror("错误", "请先登录获取cookies！")
+            self.handle_no_cookies()
+            return
+        
+        # 验证cookies是否有效
+        if not self.validate_current_cookies():
+            self.handle_invalid_cookies()
             return
         
         self.is_running = True
@@ -568,6 +658,331 @@ class MicrosoftRewardsGUI:
                                            args=(search_type, interval, desktop_count, mobile_count))
         self.search_thread.daemon = True
         self.search_thread.start()
+    
+    def validate_current_cookies(self):
+        """验证当前cookies是否有效"""
+        try:
+            with open('cookies.txt', 'r', encoding='utf-8') as f:
+                cookies = json.load(f)
+            
+            if not cookies:
+                return False
+            
+            # 检查是否有必要的cookies
+            required_cookies = ['WLSSC', 'MUID', 'SRCHD', 'SRCHUID']
+            found_cookies = [cookie.get('name') for cookie in cookies]
+            
+            # 至少要有一些基本的cookies
+            return len(cookies) >= 5
+        except Exception:
+            return False
+    
+    def handle_no_cookies(self):
+        """处理没有cookies的情况"""
+        current_account = self.account_manager.get_current_account_name()
+        
+        if current_account:
+            # 有当前账号，询问是否重新登录
+            result = messagebox.askyesnocancel(
+                "Cookies不存在", 
+                f"当前账号 '{current_account}' 没有登录信息。\n\n"
+                "选择操作：\n"
+                "• 是(Y): 重新登录获取cookies\n"
+                "• 否(N): 切换到其他账号\n"
+                "• 取消: 取消操作"
+            )
+            
+            if result is True:  # 重新登录
+                self.log_message("🔄 开始重新登录获取cookies...", "INFO")
+                self.start_login()
+            elif result is False:  # 切换账号
+                self.switch_account_dialog()
+        else:
+            # 没有当前账号，询问是否添加新账号
+            result = messagebox.askyesno(
+                "Cookies不存在", 
+                "没有找到登录信息。\n\n"
+                "选择操作：\n"
+                "• 是(Y): 添加新账号并登录\n"
+                "• 否(N): 取消操作"
+            )
+            
+            if result:
+                self.add_account_and_login()
+    
+    def handle_invalid_cookies(self):
+        """处理cookies无效的情况"""
+        current_account = self.account_manager.get_current_account_name()
+        
+        if current_account:
+            # 有当前账号，询问如何处理
+            result = messagebox.askyesnocancel(
+                "Cookies已过期", 
+                f"当前账号 '{current_account}' 的登录信息已过期。\n\n"
+                "选择操作：\n"
+                "• 是(Y): 重新登录获取cookies\n"
+                "• 否(N): 切换到其他账号\n"
+                "• 取消: 取消操作"
+            )
+            
+            if result is True:  # 重新登录
+                self.log_message("🔄 开始重新登录获取cookies...", "INFO")
+                self.start_login()
+            elif result is False:  # 切换账号
+                self.switch_account_dialog()
+        else:
+            # 没有当前账号，询问是否添加新账号
+            result = messagebox.askyesno(
+                "Cookies已过期", 
+                "登录信息已过期。\n\n"
+                "选择操作：\n"
+                "• 是(Y): 添加新账号并登录\n"
+                "• 否(N): 取消操作"
+            )
+            
+            if result:
+                self.add_account_and_login()
+    
+    def switch_account_dialog(self):
+        """账号切换对话框"""
+        accounts = self.account_manager.get_account_list()
+        
+        if not accounts:
+            messagebox.showinfo("提示", "没有其他账号可切换，请添加新账号。")
+            self.add_account_and_login()
+            return
+        
+        # 创建选择对话框
+        dialog = tk.Toplevel(self.root)
+        dialog.title("选择账号")
+        dialog.geometry("400x300")
+        dialog.transient(self.root)
+        dialog.grab_set()
+        dialog.resizable(False, False)
+        
+        # 居中显示
+        dialog.geometry("+%d+%d" % (self.root.winfo_rootx() + 150, self.root.winfo_rooty() + 150))
+        
+        # 主框架
+        main_frame = ttk.Frame(dialog, padding=20)
+        main_frame.pack(fill='both', expand=True)
+        
+        # 标题
+        title_label = ttk.Label(main_frame, text="选择要切换的账号", font=('Arial', 12, 'bold'))
+        title_label.pack(pady=(0, 15))
+        
+        # 账号列表
+        list_frame = ttk.Frame(main_frame)
+        list_frame.pack(fill='both', expand=True, pady=10)
+        
+        # 创建列表框
+        account_listbox = tk.Listbox(list_frame, height=8, font=('Arial', 10))
+        account_listbox.pack(fill='both', expand=True, side='left')
+        
+        # 滚动条
+        scrollbar = ttk.Scrollbar(list_frame, orient="vertical", command=account_listbox.yview)
+        scrollbar.pack(side='right', fill='y')
+        account_listbox.configure(yscrollcommand=scrollbar.set)
+        
+        # 填充账号列表
+        for account in accounts:
+            status = self.account_manager.get_account_status(account)
+            display_text = f"{account} ({status})"
+            account_listbox.insert(tk.END, display_text)
+        
+        def switch_selected_account():
+            selection = account_listbox.curselection()
+            if not selection:
+                messagebox.showwarning("警告", "请先选择一个账号")
+                return
+            
+            account_name = account_listbox.get(selection[0]).split(" (")[0]
+            
+            # 保存当前cookies（如果有）
+            current_account = self.account_manager.get_current_account_name()
+            if current_account and os.path.exists("cookies.txt"):
+                self.account_manager.save_current_cookies(current_account)
+            
+            # 切换到新账号
+            success, message = self.account_manager.switch_account(account_name)
+            
+            if success:
+                self.log_message(f"✅ {message}", "SUCCESS")
+                self.refresh_account_list()
+                dialog.destroy()
+                
+                # 检查新账号是否有cookies
+                if not self.account_manager.has_cookies(account_name):
+                    result = messagebox.askyesno(
+                        "账号未登录", 
+                        f"账号 '{account_name}' 还没有登录信息。\n\n是否现在登录？"
+                    )
+                    if result:
+                        self.start_login()
+            else:
+                messagebox.showerror("错误", message)
+        
+        def add_new_account():
+            dialog.destroy()
+            self.add_account_and_login()
+        
+        # 按钮框架
+        button_frame = ttk.Frame(main_frame)
+        button_frame.pack(pady=(15, 0))
+        
+        # 切换按钮
+        switch_button = ttk.Button(button_frame, text="切换账号", command=switch_selected_account)
+        switch_button.pack(side='left', padx=(0, 10))
+        
+        # 添加新账号按钮
+        add_button = ttk.Button(button_frame, text="添加新账号", command=add_new_account)
+        add_button.pack(side='left', padx=(10, 0))
+        
+        # 取消按钮
+        cancel_button = ttk.Button(button_frame, text="取消", command=dialog.destroy)
+        cancel_button.pack(side='right')
+        
+        # 设置焦点
+        account_listbox.focus()
+        if account_listbox.size() > 0:
+            account_listbox.selection_set(0)
+    
+    def add_account_and_login(self):
+        """添加新账号并立即登录"""
+        # 先添加账号
+        dialog = tk.Toplevel(self.root)
+        dialog.title("添加新账号")
+        dialog.geometry("550x420")
+        dialog.transient(self.root)
+        dialog.grab_set()
+        dialog.resizable(False, False)
+        
+        # 居中显示
+        dialog.geometry("+%d+%d" % (self.root.winfo_rootx() + 100, self.root.winfo_rooty() + 100))
+        
+        # 主框架
+        main_frame = ttk.Frame(dialog, padding=25)
+        main_frame.pack(fill='both', expand=True)
+        
+        # 标题
+        title_label = ttk.Label(main_frame, text="添加新账号并登录", font=('Arial', 16, 'bold'))
+        title_label.pack(pady=(0, 25))
+        
+        # 账号名称
+        name_frame = ttk.Frame(main_frame)
+        name_frame.pack(fill='x', pady=12)
+        ttk.Label(name_frame, text="账号名称 *:", font=('Arial', 11, 'bold')).pack(anchor='w')
+        name_var = tk.StringVar()
+        name_entry = ttk.Entry(name_frame, textvariable=name_var, width=55, font=('Arial', 10))
+        name_entry.pack(fill='x', pady=(8, 0))
+        ttk.Label(name_frame, text="必填项，用于标识账号", font=('Arial', 9), foreground='gray').pack(anchor='w')
+        
+        # 邮箱（可选）
+        email_frame = ttk.Frame(main_frame)
+        email_frame.pack(fill='x', pady=12)
+        ttk.Label(email_frame, text="邮箱地址:", font=('Arial', 11, 'bold')).pack(anchor='w')
+        email_var = tk.StringVar()
+        email_entry = ttk.Entry(email_frame, textvariable=email_var, width=55, font=('Arial', 10))
+        email_entry.pack(fill='x', pady=(8, 0))
+        ttk.Label(email_frame, text="可选，用于记录账号邮箱", font=('Arial', 9), foreground='gray').pack(anchor='w')
+        
+        # 描述（可选）
+        desc_frame = ttk.Frame(main_frame)
+        desc_frame.pack(fill='x', pady=12)
+        ttk.Label(desc_frame, text="账号描述:", font=('Arial', 11, 'bold')).pack(anchor='w')
+        desc_var = tk.StringVar()
+        desc_entry = ttk.Entry(desc_frame, textvariable=desc_var, width=55, font=('Arial', 10))
+        desc_entry.pack(fill='x', pady=(8, 0))
+        ttk.Label(desc_frame, text="可选，用于备注账号用途", font=('Arial', 9), foreground='gray').pack(anchor='w')
+        
+        # 快捷键提示
+        hint_frame = ttk.Frame(main_frame)
+        hint_frame.pack(fill='x', pady=(15, 0))
+        hint_label = ttk.Label(hint_frame, text="💡 提示: 按回车键确定，按ESC键取消", 
+                              font=('Arial', 9), foreground='blue')
+        hint_label.pack(anchor='center')
+        
+        # 分隔线
+        separator = ttk.Separator(main_frame, orient='horizontal')
+        separator.pack(fill='x', pady=25)
+        
+        def add_and_login():
+            account_name = name_var.get().strip()
+            if not account_name:
+                messagebox.showerror("错误", "请输入账号名称")
+                name_entry.focus()
+                return
+            
+            # 检查账号名称是否已存在
+            if account_name in self.account_manager.get_account_list():
+                messagebox.showerror("错误", "账号名称已存在，请使用其他名称")
+                name_entry.focus()
+                return
+            
+            # 添加账号
+            success, message = self.account_manager.add_account(
+                account_name, 
+                email_var.get().strip(), 
+                desc_var.get().strip()
+            )
+            
+            if success:
+                self.log_message(f"✅ {message}", "SUCCESS")
+                self.refresh_account_list()
+                dialog.destroy()
+                
+                # 切换到新账号并开始登录
+                self.account_manager.switch_account(account_name)
+                self.refresh_account_list()
+                self.start_login()
+            else:
+                messagebox.showerror("错误", message)
+        
+        def on_enter(event):
+            """回车键提交"""
+            add_and_login()
+        
+        def on_escape(event):
+            """ESC键取消"""
+            dialog.destroy()
+        
+        # 绑定快捷键
+        dialog.bind('<Return>', on_enter)
+        dialog.bind('<Escape>', on_escape)
+        
+        # 按钮框架
+        button_frame = ttk.Frame(main_frame)
+        button_frame.pack(pady=(25, 0))
+        
+        # 确定按钮
+        ok_button = ttk.Button(button_frame, text="添加并登录", command=add_and_login, 
+                              style='Accent.TButton', width=15)
+        ok_button.pack(side='left', padx=(0, 15))
+        
+        # 取消按钮
+        cancel_button = ttk.Button(button_frame, text="取消", command=dialog.destroy, width=12)
+        cancel_button.pack(side='left', padx=(15, 0))
+        
+        # 设置焦点
+        name_entry.focus()
+    
+    def relogin_current_account(self):
+        """重新登录当前账号"""
+        current_account = self.account_manager.get_current_account_name()
+        
+        if not current_account:
+            messagebox.showwarning("警告", "没有选择账号，请先在账号管理中切换账号。")
+            return
+        
+        result = messagebox.askyesno(
+            "重新登录", 
+            f"确定要重新登录账号 '{current_account}' 吗？\n\n"
+            "这将覆盖当前的登录信息。"
+        )
+        
+        if result:
+            self.log_message(f"🔄 开始重新登录账号 '{current_account}'...", "INFO")
+            self.start_login()
     
     def search_worker(self, search_type, interval, desktop_count, mobile_count):
         """搜索工作线程"""
@@ -762,6 +1177,221 @@ class MicrosoftRewardsGUI:
         progress = (current / total) * 100
         self.progress_bar['value'] = progress
         self.progress_var.set(f"{search_type}搜索进度: {current}/{total} ({progress:.1f}%)")
+    
+    def refresh_account_list(self):
+        """刷新账号列表"""
+        self.account_listbox.delete(0, tk.END)
+        accounts = self.account_manager.get_account_list()
+        
+        for account in accounts:
+            status = self.account_manager.get_account_status(account)
+            display_text = f"{account} ({status})"
+            self.account_listbox.insert(tk.END, display_text)
+        
+        # 更新当前账号显示
+        current_account = self.account_manager.get_current_account_name()
+        if current_account:
+            self.current_account_label.config(text=f"当前账号: {current_account}")
+        else:
+            self.current_account_label.config(text="未选择账号")
+    
+    def add_account_dialog(self):
+        """添加账号对话框"""
+        dialog = tk.Toplevel(self.root)
+        dialog.title("添加账号")
+        dialog.geometry("550x420")
+        dialog.transient(self.root)
+        dialog.grab_set()
+        dialog.resizable(False, False)
+        
+        # 居中显示
+        dialog.geometry("+%d+%d" % (self.root.winfo_rootx() + 100, self.root.winfo_rooty() + 100))
+        
+        # 主框架
+        main_frame = ttk.Frame(dialog, padding=25)
+        main_frame.pack(fill='both', expand=True)
+        
+        # 标题
+        title_label = ttk.Label(main_frame, text="添加新账号", font=('Arial', 16, 'bold'))
+        title_label.pack(pady=(0, 25))
+        
+        # 账号名称
+        name_frame = ttk.Frame(main_frame)
+        name_frame.pack(fill='x', pady=12)
+        ttk.Label(name_frame, text="账号名称 *:", font=('Arial', 11, 'bold')).pack(anchor='w')
+        name_var = tk.StringVar()
+        name_entry = ttk.Entry(name_frame, textvariable=name_var, width=55, font=('Arial', 10))
+        name_entry.pack(fill='x', pady=(8, 0))
+        ttk.Label(name_frame, text="必填项，用于标识账号", font=('Arial', 9), foreground='gray').pack(anchor='w')
+        
+        # 邮箱（可选）
+        email_frame = ttk.Frame(main_frame)
+        email_frame.pack(fill='x', pady=12)
+        ttk.Label(email_frame, text="邮箱地址:", font=('Arial', 11, 'bold')).pack(anchor='w')
+        email_var = tk.StringVar()
+        email_entry = ttk.Entry(email_frame, textvariable=email_var, width=55, font=('Arial', 10))
+        email_entry.pack(fill='x', pady=(8, 0))
+        ttk.Label(email_frame, text="可选，用于记录账号邮箱", font=('Arial', 9), foreground='gray').pack(anchor='w')
+        
+        # 描述（可选）
+        desc_frame = ttk.Frame(main_frame)
+        desc_frame.pack(fill='x', pady=12)
+        ttk.Label(desc_frame, text="账号描述:", font=('Arial', 11, 'bold')).pack(anchor='w')
+        desc_var = tk.StringVar()
+        desc_entry = ttk.Entry(desc_frame, textvariable=desc_var, width=55, font=('Arial', 10))
+        desc_entry.pack(fill='x', pady=(8, 0))
+        ttk.Label(desc_frame, text="可选，用于备注账号用途", font=('Arial', 9), foreground='gray').pack(anchor='w')
+        
+        # 快捷键提示
+        hint_frame = ttk.Frame(main_frame)
+        hint_frame.pack(fill='x', pady=(15, 0))
+        hint_label = ttk.Label(hint_frame, text="💡 提示: 按回车键确定，按ESC键取消", 
+                              font=('Arial', 9), foreground='blue')
+        hint_label.pack(anchor='center')
+        
+        # 分隔线
+        separator = ttk.Separator(main_frame, orient='horizontal')
+        separator.pack(fill='x', pady=25)
+        
+        def add_account():
+            account_name = name_var.get().strip()
+            if not account_name:
+                messagebox.showerror("错误", "请输入账号名称")
+                name_entry.focus()
+                return
+            
+            # 检查账号名称是否已存在
+            if account_name in self.account_manager.get_account_list():
+                messagebox.showerror("错误", "账号名称已存在，请使用其他名称")
+                name_entry.focus()
+                return
+            
+            success, message = self.account_manager.add_account(
+                account_name, 
+                email_var.get().strip(), 
+                desc_var.get().strip()
+            )
+            
+            if success:
+                self.log_message(f"✅ {message}", "SUCCESS")
+                self.refresh_account_list()
+                dialog.destroy()
+            else:
+                messagebox.showerror("错误", message)
+        
+        def on_enter(event):
+            """回车键提交"""
+            add_account()
+        
+        def on_escape(event):
+            """ESC键取消"""
+            dialog.destroy()
+        
+        # 绑定快捷键
+        dialog.bind('<Return>', on_enter)
+        dialog.bind('<Escape>', on_escape)
+        
+        # 按钮框架
+        button_frame = ttk.Frame(main_frame)
+        button_frame.pack(pady=(25, 0))
+        
+        # 确定按钮
+        ok_button = ttk.Button(button_frame, text="确定", command=add_account, 
+                              style='Accent.TButton', width=12)
+        ok_button.pack(side='left', padx=(0, 15))
+        
+        # 取消按钮
+        cancel_button = ttk.Button(button_frame, text="取消", command=dialog.destroy, width=12)
+        cancel_button.pack(side='left', padx=(15, 0))
+        
+        # 设置焦点
+        name_entry.focus()
+        
+        # 设置默认按钮
+        dialog.bind('<Return>', lambda e: add_account())
+    
+    def remove_account(self):
+        """删除账号"""
+        selection = self.account_listbox.curselection()
+        if not selection:
+            messagebox.showwarning("警告", "请先选择要删除的账号")
+            return
+        
+        account_name = self.account_listbox.get(selection[0]).split(" (")[0]
+        
+        if messagebox.askyesno("确认删除", f"确定要删除账号 '{account_name}' 吗？\n这将删除该账号的所有数据。"):
+            success, message = self.account_manager.remove_account(account_name)
+            
+            if success:
+                self.log_message(f"✅ {message}", "SUCCESS")
+                self.refresh_account_list()
+            else:
+                messagebox.showerror("错误", message)
+    
+    def switch_account(self):
+        """切换账号"""
+        selection = self.account_listbox.curselection()
+        if not selection:
+            messagebox.showwarning("警告", "请先选择要切换的账号")
+            return
+        
+        account_name = self.account_listbox.get(selection[0]).split(" (")[0]
+        
+        # 保存当前cookies（如果有）
+        current_account = self.account_manager.get_current_account_name()
+        if current_account and os.path.exists("cookies.txt"):
+            self.account_manager.save_current_cookies(current_account)
+        
+        # 切换到新账号
+        success, message = self.account_manager.switch_account(account_name)
+        
+        if success:
+            self.log_message(f"✅ {message}", "SUCCESS")
+            self.refresh_account_list()
+        else:
+            messagebox.showerror("错误", message)
+    
+    def save_cookies(self):
+        """保存当前cookies到当前账号"""
+        current_account = self.account_manager.get_current_account_name()
+        if not current_account:
+            messagebox.showwarning("警告", "请先选择或登录一个账号")
+            return
+        
+        if not os.path.exists("cookies.txt"):
+            messagebox.showwarning("警告", "当前没有cookies文件，请先登录")
+            return
+        
+        success, message = self.account_manager.save_current_cookies(current_account)
+        
+        if success:
+            self.log_message(f"✅ {message}", "SUCCESS")
+            self.refresh_account_list()
+        else:
+            messagebox.showerror("错误", message)
+    
+    def validate_all_cookies(self):
+        """验证所有账号的cookies"""
+        accounts = self.account_manager.get_account_list()
+        if not accounts:
+            self.log_message("ℹ️ 没有找到任何账号", "INFO")
+            return
+        
+        self.log_message("🔍 开始验证所有账号的cookies...")
+        
+        valid_count = 0
+        total_count = len(accounts)
+        
+        for account in accounts:
+            success, message = self.account_manager.validate_cookies(account)
+            if success:
+                self.log_message(f"✅ {account}: {message}", "SUCCESS")
+                valid_count += 1
+            else:
+                self.log_message(f"❌ {account}: {message}", "ERROR")
+        
+        self.log_message(f"📊 验证完成: {valid_count}/{total_count} 个账号有效", "SUCCESS")
+        self.refresh_account_list()
     
     def stop_search(self):
         """停止搜索"""
