@@ -47,7 +47,7 @@ class MicrosoftRewardsGUI:
     def __init__(self, root):
         self.root = root
         self.root.title("Microsoft Rewards 自动化工具")
-        self.root.geometry("900x700")
+        self.root.geometry("900x750")
         self.root.resizable(True, True)
         
         # 设置图标和样式
@@ -87,7 +87,7 @@ class MicrosoftRewardsGUI:
         
         # 创建选项卡
         notebook = ttk.Notebook(self.root)
-        notebook.pack(fill='both', expand=True, padx=10, pady=5)
+        notebook.pack(fill='both', expand=True, padx=10, pady=(5, 0))
         
         # 账号管理选项卡
         self.create_account_tab(notebook)
@@ -103,6 +103,49 @@ class MicrosoftRewardsGUI:
         
         # 日志选项卡
         self.create_log_tab(notebook)
+        
+        # 创建底部信息栏
+        self.create_footer()
+        
+    def create_footer(self):
+        """创建底部信息栏"""
+        footer_frame = ttk.Frame(self.root)
+        footer_frame.pack(fill='x', padx=10, pady=(5, 10))
+        
+        # 分隔线
+        separator = ttk.Separator(footer_frame, orient='horizontal')
+        separator.pack(fill='x', pady=(0, 5))
+        
+        # 项目信息
+        info_frame = ttk.Frame(footer_frame)
+        info_frame.pack(fill='x')
+        
+        # 左侧：版本信息
+        version_label = ttk.Label(info_frame, text="Microsoft Rewards 自动化工具 v2.0", 
+                                 font=('Arial', 9), foreground='gray')
+        version_label.pack(side='left')
+        
+        # 右侧：项目链接
+        link_frame = ttk.Frame(info_frame)
+        link_frame.pack(side='right')
+        
+        # GitHub链接
+        github_label = ttk.Label(link_frame, text="GitHub: ", font=('Arial', 9), foreground='gray')
+        github_label.pack(side='left')
+        
+        # 创建可点击的链接
+        link_label = ttk.Label(link_frame, text="https://github.com/Meteor-Comet/AutoMicrosoftRewards", 
+                              font=('Arial', 9), foreground='blue', cursor='hand2')
+        link_label.pack(side='left')
+        
+        # 绑定点击事件
+        def open_github(event):
+            import webbrowser
+            webbrowser.open("https://github.com/Meteor-Comet/AutoMicrosoftRewards")
+        
+        link_label.bind('<Button-1>', open_github)
+        link_label.bind('<Enter>', lambda e: link_label.configure(foreground='darkblue'))
+        link_label.bind('<Leave>', lambda e: link_label.configure(foreground='blue'))
         
     def create_login_tab(self, notebook):
         """创建登录选项卡"""
