@@ -206,6 +206,10 @@ class MicrosoftRewardsGUI:
                        variable=self.search_type, value="mobile").pack(anchor='w')
         ttk.Radiobutton(options_frame, text="🔄 完整搜索 (桌面+移动)", 
                        variable=self.search_type, value="both").pack(anchor='w')
+        ttk.Radiobutton(options_frame, text="🎯 积分任务 (点击侧栏任务)", 
+                       variable=self.search_type, value="rewards").pack(anchor='w')
+        ttk.Radiobutton(options_frame, text="👥 全部账号任务 (所有账号)", 
+                       variable=self.search_type, value="all_accounts").pack(anchor='w')
         
         # 搜索参数
         params_frame = ttk.LabelFrame(search_frame, text="搜索参数", padding=10)
@@ -319,14 +323,28 @@ class MicrosoftRewardsGUI:
         list_frame = ttk.LabelFrame(account_frame, text="账号列表", padding=10)
         list_frame.pack(fill='both', expand=True, padx=10, pady=5)
         
-        # 账号列表
-        self.account_listbox = tk.Listbox(list_frame, height=8)
-        self.account_listbox.pack(fill='both', expand=True, side='left')
+        # 创建Treeview用于显示账号列表
+        columns = ('账号名称', '状态', '操作')
+        self.account_tree = ttk.Treeview(list_frame, columns=columns, show='headings', height=8)
+        
+        # 设置列标题和宽度
+        self.account_tree.heading('账号名称', text='账号名称')
+        self.account_tree.heading('状态', text='状态')
+        self.account_tree.heading('操作', text='操作')
+        
+        self.account_tree.column('账号名称', width=200, anchor='w')
+        self.account_tree.column('状态', width=100, anchor='center')
+        self.account_tree.column('操作', width=150, anchor='center')
         
         # 滚动条
-        scrollbar = ttk.Scrollbar(list_frame, orient="vertical", command=self.account_listbox.yview)
+        scrollbar = ttk.Scrollbar(list_frame, orient="vertical", command=self.account_tree.yview)
         scrollbar.pack(side='right', fill='y')
-        self.account_listbox.configure(yscrollcommand=scrollbar.set)
+        self.account_tree.configure(yscrollcommand=scrollbar.set)
+        self.account_tree.pack(fill='both', expand=True, side='left')
+        
+        # 绑定点击事件
+        self.account_tree.bind('<Button-1>', self.on_account_click)
+        self.account_tree.bind('<Double-1>', self.on_account_double_click)
         
         # 账号操作按钮
         account_buttons_frame = ttk.Frame(account_frame)
@@ -339,10 +357,6 @@ class MicrosoftRewardsGUI:
         self.remove_account_button = ttk.Button(account_buttons_frame, text="🗑️ 删除账号", 
                                               command=self.remove_account)
         self.remove_account_button.pack(side='left', padx=5)
-        
-        self.switch_account_button = ttk.Button(account_buttons_frame, text="🔄 切换账号", 
-                                              command=self.switch_account)
-        self.switch_account_button.pack(side='left', padx=5)
         
         self.save_cookies_button = ttk.Button(account_buttons_frame, text="💾 保存Cookies", 
                                              command=self.save_cookies)
@@ -1032,6 +1046,14 @@ class MicrosoftRewardsGUI:
         try:
             self.log_message(f"🚀 开始搜索任务: {search_type}")
             
+            # 如果是完整搜索，先执行积分任务
+            if search_type == "both":
+                self.log_message("🎯 完整搜索模式：先执行积分任务...")
+                if not self.rewards_task_worker():
+                    self.log_message("⚠️ 积分任务失败，继续执行搜索...", "WARNING")
+                else:
+                    self.log_message("✅ 积分任务完成，继续执行搜索...")
+            
             if search_type in ["desktop", "both"]:
                 self.log_message("🖥️ 开始桌面端搜索...")
                 if not self.desktop_search_worker(desktop_count, interval):
@@ -1042,6 +1064,18 @@ class MicrosoftRewardsGUI:
                 self.log_message("📱 开始移动端搜索...")
                 if not self.mobile_search_worker(mobile_count, interval):
                     self.log_message("❌ 移动端搜索失败", "ERROR")
+                    return
+            
+            if search_type == "rewards":
+                self.log_message("🎯 开始积分任务...")
+                if not self.rewards_task_worker():
+                    self.log_message("❌ 积分任务失败", "ERROR")
+                    return
+            
+            if search_type == "all_accounts":
+                self.log_message("👥 开始全部账号任务...")
+                if not self.all_accounts_worker():
+                    self.log_message("❌ 全部账号任务失败", "ERROR")
                     return
             
             self.log_message("🎉 搜索任务完成！", "SUCCESS")
@@ -1065,6 +1099,9 @@ class MicrosoftRewardsGUI:
             options.add_experimental_option("excludeSwitches", ["enable-automation"])
             options.add_experimental_option('useAutomationExtension', False)
             options.add_argument("--mute-audio")
+            # 禁用日志输出
+            options.add_argument("--log-level=3")
+            options.add_argument("--silent")
             
             # 初始化驱动
             chromedriver_path = "./chromedriver.exe"
@@ -1123,6 +1160,9 @@ class MicrosoftRewardsGUI:
             options.add_argument("--disable-blink-features=AutomationControlled")
             options.add_experimental_option("excludeSwitches", ["enable-automation"])
             options.add_experimental_option('useAutomationExtension', False)
+            # 禁用日志输出
+            options.add_argument("--log-level=3")
+            options.add_argument("--silent")
             
             # 初始化驱动
             chromedriver_path = "./chromedriver.exe"
@@ -1166,6 +1206,491 @@ class MicrosoftRewardsGUI:
             
         except Exception as e:
             self.log_message(f"❌ 移动端搜索出错: {e}", "ERROR")
+            return False
+    
+    def rewards_task_worker(self):
+        """积分任务工作函数"""
+        try:
+            # 设置Chrome选项
+            options = webdriver.ChromeOptions()
+            options.add_argument("--no-sandbox")
+            options.add_argument("--disable-dev-shm-usage")
+            options.add_argument("--disable-blink-features=AutomationControlled")
+            options.add_experimental_option("excludeSwitches", ["enable-automation"])
+            options.add_experimental_option('useAutomationExtension', False)
+            options.add_argument("--mute-audio")
+            # 禁用日志输出
+            options.add_argument("--log-level=3")
+            options.add_argument("--silent")
+            
+            # 初始化驱动
+            chromedriver_path = "./chromedriver.exe"
+            service = Service(executable_path=chromedriver_path)
+            
+            driver = webdriver.Chrome(service=service, options=options)
+            driver.execute_script("Object.defineProperty(navigator, 'webdriver', {get: () => undefined})")
+            driver.maximize_window()
+            
+            # 加载cookies
+            if not self.load_cookies_worker(driver):
+                self.log_message("⚠️ Cookies加载失败，但继续尝试积分任务...", "WARNING")
+            
+            # 访问必应首页
+            driver.get('https://cn.bing.com')
+            time.sleep(5)  # 增加等待时间
+            
+            # 尝试多种方式查找积分侧栏
+            self.log_message("🔍 查找积分侧栏...")
+            
+            # 方法1: 尝试直接访问rewards页面
+            try:
+                self.log_message("🔄 尝试直接访问rewards页面...")
+                driver.get('https://rewards.bing.com')
+                time.sleep(5)
+                
+                # 等待页面加载完成
+                from selenium.webdriver.support.ui import WebDriverWait
+                from selenium.webdriver.support import expected_conditions as EC
+                
+                wait = WebDriverWait(driver, 10)
+                
+                # 尝试多种选择器查找积分任务
+                selectors = [
+                    "div.point_cont",  # 积分容器 - 主要目标
+                    "div[class*='point_cont']",  # 包含point_cont的元素
+                    "div.fc_auto.pc.b_subtitle",  # 任务容器
+                    "div[class*='fc_auto']",  # 自动任务容器
+                    "div.promo_cont",  # 推广任务容器
+                    "div[role='banner']",  # 带有role='banner'的元素
+                    "div[aria-label*='Offer']",  # 包含Offer的aria-label
+                    "div[class*='rewards']",  # 奖励相关元素
+                    "div[class*='task']",  # 任务相关元素
+                    "div[class*='offer']"  # 优惠相关元素
+                ]
+                
+                reward_tasks = []
+                for selector in selectors:
+                    try:
+                        tasks = driver.find_elements(By.CSS_SELECTOR, selector)
+                        if tasks:
+                            self.log_message(f"✅ 使用选择器 '{selector}' 找到 {len(tasks)} 个元素")
+                            reward_tasks = tasks
+                            break
+                    except:
+                        continue
+                
+                if not reward_tasks:
+                    # 方法2: 回到必应首页查找积分侧栏
+                    self.log_message("🔄 回到必应首页查找积分侧栏...")
+                    driver.get('https://cn.bing.com')
+                    time.sleep(5)
+                    
+                    # 尝试查找积分容器
+                    try:
+                        # 尝试多种选择器
+                        points_selectors = [
+                            "div.b_clickarea",
+                            "div[class*='points']",
+                            "div[class*='rewards']",
+                            "span.points-container",
+                            "div[data-tag*='Rewards']"
+                        ]
+                        
+                        points_container = None
+                        for selector in points_selectors:
+                            try:
+                                points_container = driver.find_element(By.CSS_SELECTOR, selector)
+                                self.log_message(f"✅ 找到积分容器: {selector}")
+                                break
+                            except:
+                                continue
+                        
+                        if points_container:
+                            # 点击积分侧栏
+                            driver.execute_script("arguments[0].click();", points_container)
+                            time.sleep(3)
+                            
+                            # 再次尝试查找积分任务
+                            for selector in selectors:
+                                try:
+                                    tasks = driver.find_elements(By.CSS_SELECTOR, selector)
+                                    if tasks:
+                                        self.log_message(f"✅ 点击后找到 {len(tasks)} 个积分任务")
+                                        reward_tasks = tasks
+                                        break
+                                except:
+                                    continue
+                        else:
+                            self.log_message("❌ 未找到积分容器")
+                            
+                    except Exception as e:
+                        self.log_message(f"❌ 查找积分侧栏失败: {e}", "ERROR")
+                
+                if not reward_tasks:
+                    # 方法3: 查找并切换到iframe
+                    self.log_message("🔄 尝试查找iframe中的积分任务...")
+                    try:
+                        # 查找iframe
+                        iframe_selectors = [
+                            "iframe[src*='rewards']",
+                            "iframe[src*='panelflyout']",
+                            "iframe[src*='bingflyout']",
+                            "iframe"
+                        ]
+                        
+                        iframe = None
+                        for selector in iframe_selectors:
+                            try:
+                                iframes = driver.find_elements(By.CSS_SELECTOR, selector)
+                                for iframe_elem in iframes:
+                                    src = iframe_elem.get_attribute('src')
+                                    if src and ('rewards' in src or 'panelflyout' in src or 'bingflyout' in src):
+                                        iframe = iframe_elem
+                                        self.log_message(f"✅ 找到积分iframe: {src}")
+                                        break
+                                if iframe:
+                                    break
+                            except:
+                                continue
+                        
+                        if iframe:
+                            # 切换到iframe
+                            self.log_message("🔄 切换到iframe...")
+                            driver.switch_to.frame(iframe)
+                            time.sleep(3)
+                            
+                            # 等待iframe内容加载
+                            try:
+                                from selenium.webdriver.support.ui import WebDriverWait
+                                from selenium.webdriver.support import expected_conditions as EC
+                                
+                                wait = WebDriverWait(driver, 10)
+                                wait.until(EC.presence_of_element_located((By.CSS_SELECTOR, "div")))
+                            except:
+                                self.log_message("⚠️ iframe内容加载超时，继续尝试")
+                            
+                            # 在iframe中查找任务
+                            for selector in selectors:
+                                try:
+                                    tasks = driver.find_elements(By.CSS_SELECTOR, selector)
+                                    if tasks:
+                                        self.log_message(f"✅ 在iframe中使用选择器 '{selector}' 找到 {len(tasks)} 个任务")
+                                        reward_tasks = tasks
+                                        break
+                                except:
+                                    continue
+                            
+                            # 切换回主文档
+                            driver.switch_to.default_content()
+                            
+                            # 如果找到了任务，需要重新切换到iframe进行点击
+                            if reward_tasks:
+                                self.log_message("🔄 重新切换到iframe进行任务处理...")
+                                driver.switch_to.frame(iframe)
+                                time.sleep(2)
+                                
+                                # 滚动到iframe底部确保所有任务都加载
+                                try:
+                                    driver.execute_script("window.scrollTo(0, document.body.scrollHeight);")
+                                    time.sleep(2)
+                                    driver.execute_script("window.scrollTo(0, 0);")
+                                    time.sleep(1)
+                                except:
+                                    self.log_message("⚠️ iframe滚动失败，继续尝试")
+                        else:
+                            self.log_message("❌ 未找到积分iframe")
+                    except Exception as e:
+                        self.log_message(f"⚠️ 处理iframe失败: {str(e)}")
+                        # 确保切换回主文档
+                        try:
+                            driver.switch_to.default_content()
+                        except:
+                            pass
+                
+                if not reward_tasks:
+                    self.log_message("ℹ️ 没有找到可获得的积分任务", "INFO")
+                    driver.quit()
+                    return True
+                
+                completed_tasks = 0
+                total_tasks = len(reward_tasks)
+                
+                # 记录当前是否在iframe中
+                in_iframe = False
+                if iframe:
+                    in_iframe = True
+                
+                self.log_message(f"🎯 找到 {total_tasks} 个积分任务")
+                
+                for i, task in enumerate(reward_tasks):
+                    if not self.is_running:
+                        break
+                    
+                    try:
+                        # 验证任务元素是否仍然有效
+                        try:
+                            # 尝试获取任务的基本属性来验证元素是否仍然存在
+                            task.get_attribute("aria-label")
+                        except:
+                            self.log_message(f"⚠️ 任务 {i+1}/{total_tasks} 元素已失效，跳过")
+                            continue
+                        
+                        # 滚动到任务元素位置
+                        try:
+                            driver.execute_script("arguments[0].scrollIntoView({behavior: 'smooth', block: 'center'});", task)
+                            time.sleep(1)  # 等待滚动完成
+                        except:
+                            self.log_message(f"⚠️ 任务 {i+1}/{total_tasks} 滚动失败，尝试继续")
+                        
+                        # 等待元素可见和可交互
+                        try:
+                            from selenium.webdriver.support.ui import WebDriverWait
+                            from selenium.webdriver.support import expected_conditions as EC
+                            
+                            wait = WebDriverWait(driver, 5)
+                            wait.until(EC.element_to_be_clickable(task))
+                        except:
+                            self.log_message(f"⚠️ 任务 {i+1}/{total_tasks} 等待可见超时，尝试继续")
+                        
+                        # 检查任务是否已完成
+                        # 方法1: 查找checkMark图标
+                        check_mark = []
+                        try:
+                            check_mark = task.find_elements(By.CSS_SELECTOR, "svg.checkMark")
+                        except:
+                            pass
+                        
+                        # 方法2: 检查父元素是否包含complete类
+                        parent_complete = []
+                        try:
+                            parent_complete = task.find_elements(By.CSS_SELECTOR, "div.complete")
+                        except:
+                            pass
+                        
+                        # 方法3: 检查aria-label是否包含"Completed"或"添加到帐户"
+                        aria_label = ""
+                        try:
+                            aria_label = task.get_attribute("aria-label")
+                        except:
+                            pass
+                        
+                        is_completed = False
+                        
+                        if check_mark:
+                            is_completed = True
+                        elif parent_complete:
+                            is_completed = True
+                        elif aria_label and ("Completed" in aria_label or "添加到帐户" in aria_label):
+                            is_completed = True
+                        
+                        if is_completed:
+                            self.log_message(f"✅ 任务 {i+1}/{total_tasks} 已完成，跳过")
+                            continue
+                        
+                        # 查找积分数量
+                        point_element = None
+                        point_selectors = [
+                            "div.shortPoint.point",  # 主要目标 - 积分显示元素
+                            "div[class*='shortPoint']",  # 包含shortPoint的元素
+                            "div[class*='point']",  # 包含point的元素
+                            "span[class*='point']",  # span中的积分元素
+                            "div[aria-label*='积分']"  # aria-label包含积分的元素
+                        ]
+                        
+                        for selector in point_selectors:
+                            try:
+                                point_element = task.find_element(By.CSS_SELECTOR, selector)
+                                break
+                            except:
+                                continue
+                        
+                        # 获取任务名称
+                        task_name = "未知任务"
+                        try:
+                            # 尝试从父元素获取aria-label
+                            parent_element = task.find_element(By.XPATH, "./..")
+                            parent_aria_label = parent_element.get_attribute("aria-label")
+                            
+                            if parent_aria_label:
+                                if " - " in parent_aria_label:
+                                    task_name = parent_aria_label.split(" - ")[0]
+                                else:
+                                    task_name = parent_aria_label
+                            elif aria_label:
+                                if " - " in aria_label:
+                                    task_name = aria_label.split(" - ")[0]
+                                else:
+                                    task_name = aria_label
+                        except:
+                            pass
+                        
+                        if point_element:
+                            try:
+                                points = point_element.text
+                                self.log_message(f"🎯 点击任务 {i+1}/{total_tasks}: {task_name} (积分: {points})")
+                            except:
+                                self.log_message(f"🎯 点击任务 {i+1}/{total_tasks}: {task_name}")
+                        else:
+                            self.log_message(f"🎯 点击任务 {i+1}/{total_tasks}: {task_name}")
+                        
+                        # 验证任务是否仍然可点击
+                        try:
+                            # 检查任务是否可见和可点击
+                            if not task.is_displayed() or not task.is_enabled():
+                                self.log_message(f"⚠️ 任务 {i+1}/{total_tasks} 不可点击，跳过")
+                                continue
+                        except:
+                            self.log_message(f"⚠️ 任务 {i+1}/{total_tasks} 状态检查失败，跳过")
+                            continue
+                        
+                        # 使用JavaScript点击任务
+                        try:
+                            driver.execute_script("arguments[0].click();", task)
+                            time.sleep(3)
+                        except Exception as e:
+                            self.log_message(f"⚠️ 点击任务 {i+1}/{total_tasks} 失败: {e}", "WARNING")
+                            continue
+                        
+                        # 获取所有窗口句柄
+                        try:
+                            handles = driver.window_handles
+                            
+                            # 如果有新窗口打开，关闭它
+                            if len(handles) > 1:
+                                # 切换到新窗口
+                                driver.switch_to.window(handles[-1])
+                                time.sleep(2)
+                                
+                                # 关闭新窗口
+                                driver.close()
+                                
+                                # 切换回原窗口
+                                driver.switch_to.window(handles[0])
+                                
+                                # 重新切换到iframe
+                                if in_iframe:
+                                    try:
+                                        driver.switch_to.frame(iframe)
+                                        time.sleep(1)
+                                    except:
+                                        self.log_message(f"⚠️ 任务 {i+1}/{total_tasks} 重新切换iframe失败")
+                                
+                                self.log_message(f"✅ 任务 {i+1}/{total_tasks} 完成")
+                                completed_tasks += 1
+                            else:
+                                self.log_message(f"⚠️ 任务 {i+1}/{total_tasks} 没有打开新窗口")
+                        except Exception as e:
+                            self.log_message(f"⚠️ 处理任务窗口失败: {e}", "WARNING")
+                            
+                            # 确保切换回iframe
+                            if in_iframe:
+                                try:
+                                    driver.switch_to.frame(iframe)
+                                    time.sleep(1)
+                                except:
+                                    self.log_message(f"⚠️ 任务 {i+1}/{total_tasks} 异常后切换iframe失败")
+                        
+                        self.update_progress(i+1, total_tasks, "积分任务")
+                        time.sleep(2)
+                        
+                    except Exception as e:
+                        self.log_message(f"⚠️ 任务 {i+1}/{total_tasks} 出错: {e}", "WARNING")
+                        continue
+                
+                self.log_message(f"🎉 积分任务完成！共完成 {completed_tasks}/{total_tasks} 个任务", "SUCCESS")
+                
+            except Exception as e:
+                self.log_message(f"❌ 积分任务执行失败: {e}", "ERROR")
+            finally:
+                # 确保切换回主文档
+                try:
+                    driver.switch_to.default_content()
+                except:
+                    pass
+            
+            driver.quit()
+            return True
+            
+        except Exception as e:
+            self.log_message(f"❌ 积分任务出错: {e}", "ERROR")
+            return False
+    
+    def all_accounts_worker(self):
+        """全部账号任务工作函数"""
+        try:
+            # 获取所有账号
+            accounts = self.account_manager.get_all_accounts()
+            if not accounts:
+                self.log_message("❌ 没有找到任何账号", "ERROR")
+                return False
+            
+            self.log_message(f"👥 找到 {len(accounts)} 个账号，开始依次处理...")
+            
+            completed_accounts = 0
+            total_accounts = len(accounts)
+            
+            for i, account_name in enumerate(accounts):
+                if not self.is_running:
+                    break
+                
+                self.log_message(f"🔄 处理账号 {i+1}/{total_accounts}: {account_name}")
+                
+                # 切换到当前账号
+                try:
+                    self.account_manager.switch_to_account(account_name)
+                    self.log_message(f"✅ 已切换到账号: {account_name}")
+                except Exception as e:
+                    self.log_message(f"❌ 切换账号 {account_name} 失败: {e}", "ERROR")
+                    continue
+                
+                # 为当前账号执行完整搜索任务
+                try:
+                    # 获取搜索参数
+                    interval = float(self.interval_var.get())
+                    desktop_count = int(self.desktop_count_var.get())
+                    mobile_count = int(self.mobile_count_var.get())
+                    
+                    self.log_message(f"🎯 开始账号 {account_name} 的完整搜索任务...")
+                    
+                    # 先执行积分任务
+                    self.log_message(f"🎯 账号 {account_name}: 执行积分任务...")
+                    if not self.rewards_task_worker():
+                        self.log_message(f"⚠️ 账号 {account_name} 积分任务失败，继续...", "WARNING")
+                    else:
+                        self.log_message(f"✅ 账号 {account_name} 积分任务完成")
+                    
+                    # 执行桌面端搜索
+                    self.log_message(f"🖥️ 账号 {account_name}: 执行桌面端搜索...")
+                    if not self.desktop_search_worker(desktop_count, interval):
+                        self.log_message(f"❌ 账号 {account_name} 桌面端搜索失败", "ERROR")
+                        continue
+                    
+                    # 执行移动端搜索
+                    self.log_message(f"📱 账号 {account_name}: 执行移动端搜索...")
+                    if not self.mobile_search_worker(mobile_count, interval):
+                        self.log_message(f"❌ 账号 {account_name} 移动端搜索失败", "ERROR")
+                        continue
+                    
+                    self.log_message(f"✅ 账号 {account_name} 完整搜索任务完成")
+                    completed_accounts += 1
+                    
+                except Exception as e:
+                    self.log_message(f"❌ 账号 {account_name} 任务执行失败: {e}", "ERROR")
+                    continue
+                
+                # 更新进度
+                self.update_progress(i+1, total_accounts, f"全部账号任务 ({account_name})")
+                
+                # 账号间等待
+                if i < total_accounts - 1:  # 不是最后一个账号
+                    self.log_message(f"⏳ 等待 3 秒后处理下一个账号...")
+                    time.sleep(3)
+            
+            self.log_message(f"🎉 全部账号任务完成！成功处理 {completed_accounts}/{total_accounts} 个账号", "SUCCESS")
+            return True
+            
+        except Exception as e:
+            self.log_message(f"❌ 全部账号任务出错: {e}", "ERROR")
             return False
     
     def load_cookies_worker(self, driver):
@@ -1223,16 +1748,28 @@ class MicrosoftRewardsGUI:
     
     def refresh_account_list(self):
         """刷新账号列表"""
-        self.account_listbox.delete(0, tk.END)
+        # 清空现有项目
+        for item in self.account_tree.get_children():
+            self.account_tree.delete(item)
+        
         accounts = self.account_manager.get_account_list()
+        current_account = self.account_manager.get_current_account_name()
         
         for account in accounts:
             status = self.account_manager.get_account_status(account)
-            display_text = f"{account} ({status})"
-            self.account_listbox.insert(tk.END, display_text)
+            
+            # 判断是否为当前账号
+            if account == current_account:
+                status_text = f"✅ {status}"
+                switch_text = "当前账号"
+            else:
+                status_text = status
+                switch_text = "🔄 切换"
+            
+            # 插入到Treeview
+            self.account_tree.insert('', 'end', values=(account, status_text, switch_text))
         
         # 更新当前账号显示
-        current_account = self.account_manager.get_current_account_name()
         if current_account:
             self.current_account_label.config(text=f"当前账号: {current_account}")
         else:
@@ -1355,14 +1892,16 @@ class MicrosoftRewardsGUI:
     
     def remove_account(self):
         """删除账号"""
-        selection = self.account_listbox.curselection()
+        selection = self.account_tree.selection()
         if not selection:
             messagebox.showwarning("警告", "请先选择要删除的账号")
             return
         
-        account_name = self.account_listbox.get(selection[0]).split(" (")[0]
+        # 获取选中的账号名称
+        item = selection[0]
+        account_name = self.account_tree.item(item, 'values')[0]
         
-        if messagebox.askyesno("确认删除", f"确定要删除账号 '{account_name}' 吗？\n这将删除该账号的所有数据。"):
+        if messagebox.askyesno("确认删除", f"确定要删除账号 '{account_name}' 吗？\n\n注意：这将删除该账号的所有数据，包括cookies文件。"):
             success, message = self.account_manager.remove_account(account_name)
             
             if success:
@@ -1371,15 +1910,8 @@ class MicrosoftRewardsGUI:
             else:
                 messagebox.showerror("错误", message)
     
-    def switch_account(self):
-        """切换账号"""
-        selection = self.account_listbox.curselection()
-        if not selection:
-            messagebox.showwarning("警告", "请先选择要切换的账号")
-            return
-        
-        account_name = self.account_listbox.get(selection[0]).split(" (")[0]
-        
+    def switch_to_account(self, account_name):
+        """切换到指定账号"""
         # 保存当前cookies（如果有）
         current_account = self.account_manager.get_current_account_name()
         if current_account and os.path.exists("cookies.txt"):
@@ -1393,6 +1925,39 @@ class MicrosoftRewardsGUI:
             self.refresh_account_list()
         else:
             messagebox.showerror("错误", message)
+    
+    def on_account_click(self, event):
+        """账号点击事件"""
+        region = self.account_tree.identify("region", event.x, event.y)
+        if region == "cell":
+            column = self.account_tree.identify_column(event.x)
+            item = self.account_tree.identify_row(event.y)
+            
+            if item and column == "#3":  # 第三列（操作列）
+                values = self.account_tree.item(item, 'values')
+                if values and values[2] == "🔄 切换":  # 只有非当前账号才能切换
+                    account_name = values[0]
+                    self.switch_to_account(account_name)
+    
+    def on_account_double_click(self, event):
+        """账号双击事件"""
+        selection = self.account_tree.selection()
+        if selection:
+            item = selection[0]
+            account_name = self.account_tree.item(item, 'values')[0]
+            self.switch_to_account(account_name)
+    
+    def switch_account(self):
+        """切换账号（保留原有方法以兼容）"""
+        selection = self.account_tree.selection()
+        if not selection:
+            messagebox.showwarning("警告", "请先选择要切换的账号")
+            return
+        
+        # 获取选中的账号名称
+        item = selection[0]
+        account_name = self.account_tree.item(item, 'values')[0]
+        self.switch_to_account(account_name)
     
     def save_cookies(self):
         """保存当前cookies到当前账号"""
