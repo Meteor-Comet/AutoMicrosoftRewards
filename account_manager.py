@@ -98,6 +98,7 @@ class AccountManager:
         
         # 切换到新账号的cookies
         target_cookies = self.accounts[account_name]["cookies_file"]
+        
         if os.path.exists(target_cookies):
             try:
                 shutil.copy(target_cookies, "cookies.txt")
@@ -118,6 +119,34 @@ class AccountManager:
         self.save_accounts()
         
         return True, f"已切换到账号 '{account_name}'"
+    
+    def switch_to_account(self, account_name):
+        """切换到指定账号（简化版本，用于全部账号任务）"""
+        if account_name not in self.accounts:
+            raise ValueError(f"账号 '{account_name}' 不存在")
+        
+        # 备份当前cookies（如果存在）
+        if os.path.exists("cookies.txt"):
+            current_account = self.get_current_account_name()
+            if current_account:
+                backup_file = f"cookies_{current_account}.txt"
+                try:
+                    shutil.copy("cookies.txt", backup_file)
+                except Exception:
+                    pass
+        
+        # 切换到新账号的cookies
+        target_cookies = self.accounts[account_name]["cookies_file"]
+        
+        if os.path.exists(target_cookies):
+            try:
+                shutil.copy(target_cookies, "cookies.txt")
+                self.current_account = account_name
+                return True
+            except Exception as e:
+                raise Exception(f"切换账号失败: {e}")
+        else:
+            raise Exception(f"账号 '{account_name}' 的cookies文件不存在")
     
     def save_current_cookies(self, account_name=None):
         """保存当前cookies到指定账号"""
@@ -141,6 +170,10 @@ class AccountManager:
     
     def get_account_list(self):
         """获取账号列表"""
+        return list(self.accounts.keys())
+    
+    def get_all_accounts(self):
+        """获取所有账号名称列表"""
         return list(self.accounts.keys())
     
     def get_account_info(self, account_name):
