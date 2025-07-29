@@ -1,34 +1,55 @@
 # -*- mode: python ; coding: utf-8 -*-
-from PyInstaller.utils.hooks import collect_all
 
-datas = [('chromedriver.exe', '.'), ('custom_search_terms.py', '.'), ('account_manager.py', '.'), ('test_rewards.py', '.')]
-binaries = []
-hiddenimports = ['selenium', 'selenium.webdriver', 'selenium.webdriver.chrome.service', 'selenium.webdriver.common.by', 'selenium.webdriver.common.keys', 'selenium.webdriver.support.ui', 'selenium.webdriver.support', 'selenium.common.exceptions', 'tkinter', 'tkinter.ttk', 'tkinter.messagebox', 'tkinter.scrolledtext', 'json', 'threading', 'time', 'os', 'random', 'sys', 'datetime', 'webbrowser']
-tmp_ret = collect_all('selenium')
-datas += tmp_ret[0]; binaries += tmp_ret[1]; hiddenimports += tmp_ret[2]
-tmp_ret = collect_all('tkinter')
-datas += tmp_ret[0]; binaries += tmp_ret[1]; hiddenimports += tmp_ret[2]
-
+block_cipher = None
 
 a = Analysis(
     ['gui_app.py'],
     pathex=[],
-    binaries=binaries,
-    datas=datas,
-    hiddenimports=hiddenimports,
+    binaries=[],
+    datas=[
+        ('chromedriver.exe', '.'),
+        ('custom_search_terms.py', '.'),
+        ('account_manager.py', '.'),
+    ],
+    hiddenimports=[
+        'selenium',
+        'selenium.webdriver',
+        'selenium.webdriver.chrome.service',
+        'selenium.webdriver.common.by',
+        'selenium.webdriver.common.keys',
+        'selenium.webdriver.support.ui',
+        'selenium.webdriver.support',
+        'selenium.common.exceptions',
+        'tkinter',
+        'tkinter.ttk',
+        'tkinter.messagebox',
+        'tkinter.scrolledtext',
+        'json',
+        'threading',
+        'time',
+        'os',
+        'random',
+        'sys',
+        'datetime',
+        'webbrowser',
+    ],
     hookspath=[],
     hooksconfig={},
     runtime_hooks=[],
     excludes=[],
+    win_no_prefer_redirects=False,
+    win_private_assemblies=False,
+    cipher=block_cipher,
     noarchive=False,
-    optimize=0,
 )
-pyz = PYZ(a.pure)
+
+pyz = PYZ(a.pure, a.zipped_data, cipher=block_cipher)
 
 exe = EXE(
     pyz,
     a.scripts,
     a.binaries,
+    a.zipfiles,
     a.datas,
     [],
     name='MicrosoftRewards',
@@ -44,5 +65,5 @@ exe = EXE(
     target_arch=None,
     codesign_identity=None,
     entitlements_file=None,
-    icon=['icon.ico'],
+    icon='icon.ico' if os.path.exists('icon.ico') else None,
 )
