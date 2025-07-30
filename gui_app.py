@@ -24,6 +24,13 @@ from selenium.webdriver.common.keys import Keys
 # 导入账号管理模块
 from account_manager import AccountManager
 
+# 导入ChromeDriver更新模块
+try:
+    from chromedriver_updater import ChromeDriverUpdater
+    CHROMEDRIVER_UPDATER_AVAILABLE = True
+except ImportError:
+    CHROMEDRIVER_UPDATER_AVAILABLE = False
+
 # 尝试导入自定义搜索词，如果没有则使用默认列表
 try:
     from custom_search_terms import CUSTOM_SEARCH_TERMS
@@ -313,6 +320,25 @@ class MicrosoftRewardsGUI:
         self.validate_all_cookies_button = ttk.Button(account_settings_frame, text="🔍 验证所有Cookies", 
                                                      command=self.validate_all_cookies)
         self.validate_all_cookies_button.pack(side='left', padx=5)
+        
+        # ChromeDriver更新
+        chromedriver_frame = ttk.LabelFrame(settings_frame, text="ChromeDriver更新", padding=10)
+        chromedriver_frame.pack(fill='x', padx=10, pady=5)
+        
+        self.check_chromedriver_button = ttk.Button(chromedriver_frame, text="🔍 检查ChromeDriver更新", 
+                                                   command=self.check_chromedriver_update)
+        self.check_chromedriver_button.pack(side='left', padx=5)
+        
+        self.update_chromedriver_button = ttk.Button(chromedriver_frame, text="⬇️ 更新ChromeDriver",
+                                                   command=self.update_chromedriver)
+        self.update_chromedriver_button.pack(side='left', padx=5)
+
+        self.force_update_chromedriver_button = ttk.Button(chromedriver_frame, text="🔄 强制更新",
+                                                         command=self.force_update_chromedriver)
+        self.force_update_chromedriver_button.pack(side='left', padx=5)
+
+        self.chromedriver_status_label = ttk.Label(chromedriver_frame, text="点击按钮检查ChromeDriver状态")
+        self.chromedriver_status_label.pack(side='left', padx=10)
         
     def create_account_tab(self, notebook):
         """创建账号管理选项卡"""
@@ -2016,6 +2042,129 @@ class MicrosoftRewardsGUI:
         self.log_message(f"📊 验证完成: {valid_count}/{total_count} 个账号有效", "SUCCESS")
         self.refresh_account_list()
     
+    def check_chromedriver_update(self):
+        """检查ChromeDriver更新"""
+        if not CHROMEDRIVER_UPDATER_AVAILABLE:
+            self.log_message("❌ ChromeDriver更新模块不可用，请确保已安装requests库")
+            self.chromedriver_status_label.config(text="更新模块不可用")
+            return
+        
+        def update_callback(message):
+            self.log_message(message)
+            self.chromedriver_status_label.config(text=message)
+            self.root.update()
+        
+        def check_worker():
+            try:
+                updater = ChromeDriverUpdater()
+                update_info = updater.check_for_updates(update_callback)
+                
+                if update_info:
+                    self.log_message(f"发现新版本: {update_info['version']}")
+                    self.chromedriver_status_label.config(text=f"发现新版本: {update_info['version']}")
+                else:
+                    self.log_message("ChromeDriver已是最新版本")
+                    self.chromedriver_status_label.config(text="已是最新版本")
+                    
+            except Exception as e:
+                error_msg = f"检查更新时出错: {str(e)}"
+                self.log_message(error_msg)
+                self.chromedriver_status_label.config(text="检查失败")
+        
+        # 在新线程中运行检查
+        threading.Thread(target=check_worker, daemon=True).start()
+    
+    def update_chromedriver(self):
+        """更新ChromeDriver"""
+        if not CHROMEDRIVER_UPDATER_AVAILABLE:
+            self.log_message("❌ ChromeDriver更新模块不可用，请确保已安装requests库")
+            return
+        
+        # 确认对话框
+        result = messagebox.askyesno("确认更新", 
+                                   "确定要更新ChromeDriver吗？\n\n"
+                                   "更新过程中程序可能会暂时无响应，请耐心等待。\n"
+                                   "更新完成后需要重启程序。")
+        if not result:
+            return
+        
+        def update_callback(message):
+            self.log_message(message)
+            self.chromedriver_status_label.config(text=message)
+            self.root.update()
+        
+        def update_worker():
+            try:
+                updater = ChromeDriverUpdater()
+                success = updater.update_chromedriver(update_callback)
+                
+                if success:
+                    self.log_message("✅ ChromeDriver更新成功！")
+                    self.chromedriver_status_label.config(text="更新成功")
+                    messagebox.showinfo("更新完成", 
+                                      "ChromeDriver更新成功！\n\n"
+                                      "建议重启程序以确保新版本生效。")
+                else:
+                    self.log_message("❌ ChromeDriver更新失败")
+                    self.chromedriver_status_label.config(text="更新失败")
+                    messagebox.showerror("更新失败", 
+                                       "ChromeDriver更新失败，请检查网络连接或手动下载。")
+                    
+            except Exception as e:
+                error_msg = f"更新时出错: {str(e)}"
+                self.log_message(error_msg)
+                self.chromedriver_status_label.config(text="更新出错")
+                messagebox.showerror("更新错误", error_msg)
+        
+        # 在新线程中运行更新
+        threading.Thread(target=update_worker, daemon=True).start()
+
+    def force_update_chromedriver(self):
+              """强制更新ChromeDriver"""
+              if not CHROMEDRIVER_UPDATER_AVAILABLE:
+                  self.log_message("❌ ChromeDriver更新模块不可用，请确保已安装requests库")
+                  return
+
+              # 确认对话框
+              result = messagebox.askyesno("确认强制更新",
+                                         "确定要强制更新ChromeDriver吗？\n\n"
+                                         "这将下载最新版本并替换当前版本，不管当前版本是什么。\n"
+                                         "更新过程中程序可能会暂时无响应，请耐心等待。\n"
+                                         "更新完成后需要重启程序。")
+              if not result:
+                  return
+
+              def update_callback(message):
+                  self.log_message(message)
+                  self.chromedriver_status_label.config(text=message)
+                  self.root.update()
+
+              def force_update_worker():
+                  try:
+                      updater = ChromeDriverUpdater()
+                      success = updater.force_update_chromedriver(update_callback)
+
+                      if success:
+                          self.log_message("✅ ChromeDriver强制更新成功！")
+                          self.chromedriver_status_label.config(text="强制更新成功")
+                          messagebox.showinfo("更新完成",
+                                            "ChromeDriver强制更新成功！\n\n"
+                                            "建议重启程序以确保新版本生效。")
+                      else:
+                          self.log_message("❌ ChromeDriver强制更新失败")
+                          self.chromedriver_status_label.config(text="强制更新失败")
+                          messagebox.showerror("更新失败",
+                                            "ChromeDriver强制更新失败，请检查网络连接或手动下载。")
+
+                  except Exception as e:
+                      error_msg = f"强制更新时出错: {str(e)}"
+                      self.log_message(error_msg)
+                      self.chromedriver_status_label.config(text="强制更新出错")
+                      messagebox.showerror("更新错误", error_msg)
+
+              # 在新线程中运行强制更新
+              threading.Thread(target=force_update_worker, daemon=True).start()
+
     def stop_search(self):
         """停止搜索"""
         self.is_running = False

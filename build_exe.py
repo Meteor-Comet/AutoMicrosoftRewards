@@ -56,6 +56,7 @@ def build_exe():
         "--add-data=custom_search_terms.py;.",  # 包含自定义搜索词文件
         "--add-data=account_manager.py;.",  # 包含账号管理模块
         "--add-data=test_rewards.py;.",  # 包含测试脚本
+        "--add-data=chromedriver_updater.py;.",  # 包含ChromeDriver更新模块
         "--hidden-import=selenium",
         "--hidden-import=selenium.webdriver",
         "--hidden-import=selenium.webdriver.chrome.service",
@@ -76,6 +77,13 @@ def build_exe():
         "--hidden-import=sys",
         "--hidden-import=datetime",
         "--hidden-import=webbrowser",
+        "--hidden-import=requests",
+        "--hidden-import=platform",
+        "--hidden-import=subprocess",
+        "--hidden-import=re",
+        "--hidden-import=zipfile",
+        "--hidden-import=shutil",
+        "--hidden-import=urllib.parse",
         "--collect-all=selenium",
         "--collect-all=tkinter",
         "gui_app.py"
@@ -118,6 +126,10 @@ def build_exe():
                 shutil.copy("test_rewards.py", "dist/")
                 print("✅ 已复制test_rewards.py到dist目录")
             
+            if os.path.exists("chromedriver_updater.py"):
+                shutil.copy("chromedriver_updater.py", "dist/")
+                print("✅ 已复制chromedriver_updater.py到dist目录")
+            
             print("\n🎉 打包完成！")
             print("📁 发布文件:")
             print("  - dist/MicrosoftRewards.exe (主程序)")
@@ -125,6 +137,7 @@ def build_exe():
             print("  - dist/custom_search_terms.py (可选，自定义搜索词)")
             print("  - dist/account_manager.py (账号管理模块)")
             print("  - dist/test_rewards.py (可选，调试工具)")
+            print("  - dist/chromedriver_updater.py (ChromeDriver更新模块)")
             
             return True
         else:

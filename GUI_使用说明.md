@@ -182,6 +182,19 @@ python build_exe.py
 #### 搜索词管理
 - **✏️ 编辑搜索词**: 打开自定义搜索词文件进行编辑
 
+#### ChromeDriver更新
+- **🔍 检查ChromeDriver更新**: 检查当前ChromeDriver版本和最新ChromeDriver版本
+- **⬇️ 更新ChromeDriver**: 自动下载并更新ChromeDriver文件
+- **更新状态**: 显示当前版本和更新状态
+
+**更新功能特点**：
+- 自动检测系统类型（Windows/Linux/macOS）
+- 获取当前ChromeDriver版本
+- 从官方API获取最新ChromeDriver版本
+- 自动下载并替换ChromeDriver文件
+- 支持版本回滚（更新失败时自动恢复）
+- 更新完成后建议重启程序
+
 ### 📋 运行日志选项卡
 
 #### 日志功能
@@ -235,7 +248,7 @@ CUSTOM_SEARCH_TERMS = [
 1. **程序无法启动**
    - 确保chromedriver.exe与exe文件在同一目录
    - 检查Chrome浏览器是否已安装
-   - 确保ChromeDriver版本与Chrome浏览器版本匹配
+   - 确保ChromeDriver版本为最新版本
 
 2. **登录检测失败**
    - 确保在必应首页进行登录

@@ -27,6 +27,7 @@
 - `validate_cookies.py`: Cookies验证工具（诊断cookies问题）
 - `custom_search_terms.py`: 自定义搜索词配置文件
 - `chromedriver.exe`: Chrome浏览器驱动
+- `chromedriver_updater.py`: ChromeDriver自动更新模块
 - `requirements.txt`: Python依赖管理文件
 
 ## 使用方法
@@ -116,7 +117,29 @@ mobile_search.bat
 python validate_cookies.py
 ```
 
-### 4. 自定义搜索词（可选）
+### 4. ChromeDriver自动更新（GUI版本）
+
+在GUI版本的"⚙️ 设置"选项卡中，提供了ChromeDriver自动更新功能：
+
+#### 检查更新
+- 点击"🔍 检查ChromeDriver更新"按钮
+- 程序会自动检查当前ChromeDriver版本和最新ChromeDriver版本
+- 显示当前版本和最新版本信息
+
+#### 自动更新
+- 点击"⬇️ 更新ChromeDriver"按钮
+- 程序会自动下载并替换ChromeDriver文件
+- 更新过程中会显示详细进度
+- 更新完成后建议重启程序
+
+**功能特点**：
+- 自动检测系统类型（Windows/Linux/macOS）
+- 获取当前ChromeDriver版本
+- 从官方API获取最新ChromeDriver版本
+- 自动下载并替换ChromeDriver文件
+- 支持版本回滚（更新失败时自动恢复）
+
+### 5. 自定义搜索词（可选）
 
 你可以编辑 `custom_search_terms.py` 文件来自定义搜索词：
 
@@ -142,6 +165,7 @@ notepad custom_search_terms.py
 - Python 3.6+
 - Chrome浏览器
 - ChromeDriver（放在当前目录下）
+- requests库（用于ChromeDriver自动更新）
 
 ## 依赖安装
 
@@ -153,6 +177,7 @@ pip install -r requirements.txt
 
 ```bash
 pip install selenium
+pip install requests
 ```
 
 ## 注意事项
@@ -161,18 +186,20 @@ pip install selenium
 2. **登录状态**: 确保在程序运行期间完成Microsoft账户登录
 3. **网络连接**: 确保网络连接稳定
 4. **ChromeDriver**: 确保当前目录下有chromedriver.exe文件
+5. **自动更新**: GUI版本支持ChromeDriver自动更新功能
 
 ## 故障排除
 
 ### 常见问题
 
 1. **ChromeDriver错误**
-   - 确保ChromeDriver版本与Chrome浏览器版本匹配
+   - 确保ChromeDriver版本为最新版本
    - 下载对应版本的ChromeDriver
 
 2. **ChromeDriver版本不兼容**
    - 下载最新版本的ChromeDriver
    - 将chromedriver.exe放在当前目录下
+   - 使用GUI版本的"ChromeDriver更新"功能自动更新
 
 3. **登录检测失败**
    - 检查网络连接
