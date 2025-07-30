@@ -2061,7 +2061,11 @@ class MicrosoftRewardsGUI:
                 
                 if update_info:
                     self.log_message(f"发现新版本: {update_info['version']}")
+                    self.log_message(f"下载链接: {update_info['manual_download_url']}")
                     self.chromedriver_status_label.config(text=f"发现新版本: {update_info['version']}")
+                    
+                    # 显示手动下载说明
+                    self.show_manual_download_dialog(update_info)
                 else:
                     self.log_message("ChromeDriver已是最新版本")
                     self.chromedriver_status_label.config(text="已是最新版本")
@@ -2073,6 +2077,87 @@ class MicrosoftRewardsGUI:
         
         # 在新线程中运行检查
         threading.Thread(target=check_worker, daemon=True).start()
+
+    def show_manual_download_dialog(self, update_info):
+        """显示手动下载对话框"""
+        dialog = tk.Toplevel(self.root)
+        dialog.title("ChromeDriver手动下载")
+        dialog.geometry("600x500")
+        dialog.resizable(True, True)
+        dialog.transient(self.root)
+        dialog.grab_set()
+        
+        # 居中显示
+        dialog.update_idletasks()
+        x = (dialog.winfo_screenwidth() // 2) - (600 // 2)
+        y = (dialog.winfo_screenheight() // 2) - (500 // 2)
+        dialog.geometry(f"600x500+{x}+{y}")
+        
+        # 创建滚动文本框
+        frame = ttk.Frame(dialog)
+        frame.pack(fill='both', expand=True, padx=10, pady=10)
+        
+        # 标题
+        title_label = ttk.Label(frame, text="ChromeDriver手动下载说明", font=('Arial', 12, 'bold'))
+        title_label.pack(pady=(0, 10))
+        
+        # 创建文本框和滚动条
+        text_frame = ttk.Frame(frame)
+        text_frame.pack(fill='both', expand=True)
+        
+        text_widget = tk.Text(text_frame, wrap='word', font=('Consolas', 9))
+        scrollbar = ttk.Scrollbar(text_frame, orient='vertical', command=text_widget.yview)
+        text_widget.configure(yscrollcommand=scrollbar.set)
+        
+        text_widget.pack(side='left', fill='both', expand=True)
+        scrollbar.pack(side='right', fill='y')
+        
+        # 插入内容
+        content = f"""ChromeDriver {update_info['version']} 手动下载说明
+
+1. 访问官方下载页面：
+   https://googlechromelabs.github.io/chrome-for-testing/#stable
+
+2. 直接下载链接：
+   {update_info['manual_download_url']}
+
+3. 下载完成后：
+   - 解压zip文件
+   - 将解压出的 chromedriver.exe 文件复制到当前程序目录
+   - 替换现有的 chromedriver.exe 文件
+
+4. 验证安装：
+   - 运行 .\\chromedriver.exe --version 检查版本
+   - 应该显示：ChromeDriver {update_info['version']}
+
+5. 注意事项：
+   - 确保下载的是 {update_info['system']} 版本
+   - 下载完成后建议重启程序
+   - 如果自动更新失败，可以尝试手动下载
+
+当前检测到的平台：{update_info['system']}
+最新版本：{update_info['version']}
+"""
+        
+        text_widget.insert('1.0', content)
+        text_widget.config(state='disabled')  # 设置为只读
+        
+        # 按钮框架
+        button_frame = ttk.Frame(frame)
+        button_frame.pack(fill='x', pady=(10, 0))
+        
+        # 复制链接按钮
+        def copy_link():
+            self.root.clipboard_clear()
+            self.root.clipboard_append(update_info['manual_download_url'])
+            messagebox.showinfo("复制成功", "下载链接已复制到剪贴板")
+        
+        copy_button = ttk.Button(button_frame, text="复制下载链接", command=copy_link)
+        copy_button.pack(side='left', padx=(0, 10))
+        
+        # 关闭按钮
+        close_button = ttk.Button(button_frame, text="关闭", command=dialog.destroy)
+        close_button.pack(side='right')
     
     def update_chromedriver(self):
         """更新ChromeDriver"""
@@ -2107,8 +2192,21 @@ class MicrosoftRewardsGUI:
                 else:
                     self.log_message("❌ ChromeDriver更新失败")
                     self.chromedriver_status_label.config(text="更新失败")
-                    messagebox.showerror("更新失败", 
-                                       "ChromeDriver更新失败，请检查网络连接或手动下载。")
+                    
+                    # 获取最新版本信息并显示手动下载对话框
+                    try:
+                        latest_info = updater.get_latest_chromedriver_info()
+                        if latest_info:
+                            messagebox.showerror("更新失败", 
+                                               "ChromeDriver自动更新失败。\n\n"
+                                               "将显示手动下载说明。")
+                            self.show_manual_download_dialog(latest_info)
+                        else:
+                            messagebox.showerror("更新失败", 
+                                               "ChromeDriver更新失败，请检查网络连接或手动下载。")
+                    except:
+                        messagebox.showerror("更新失败", 
+                                           "ChromeDriver更新失败，请检查网络连接或手动下载。")
                     
             except Exception as e:
                 error_msg = f"更新时出错: {str(e)}"
@@ -2120,50 +2218,63 @@ class MicrosoftRewardsGUI:
         threading.Thread(target=update_worker, daemon=True).start()
 
     def force_update_chromedriver(self):
-              """强制更新ChromeDriver"""
-              if not CHROMEDRIVER_UPDATER_AVAILABLE:
-                  self.log_message("❌ ChromeDriver更新模块不可用，请确保已安装requests库")
-                  return
+        """强制更新ChromeDriver"""
+        if not CHROMEDRIVER_UPDATER_AVAILABLE:
+            self.log_message("❌ ChromeDriver更新模块不可用，请确保已安装requests库")
+            return
 
-              # 确认对话框
-              result = messagebox.askyesno("确认强制更新",
-                                         "确定要强制更新ChromeDriver吗？\n\n"
-                                         "这将下载最新版本并替换当前版本，不管当前版本是什么。\n"
-                                         "更新过程中程序可能会暂时无响应，请耐心等待。\n"
-                                         "更新完成后需要重启程序。")
-              if not result:
-                  return
+        # 确认对话框
+        result = messagebox.askyesno("确认强制更新",
+                                   "确定要强制更新ChromeDriver吗？\n\n"
+                                   "这将下载最新版本并替换当前版本，不管当前版本是什么。\n"
+                                   "更新过程中程序可能会暂时无响应，请耐心等待。\n"
+                                   "更新完成后需要重启程序。")
+        if not result:
+            return
 
-              def update_callback(message):
-                  self.log_message(message)
-                  self.chromedriver_status_label.config(text=message)
-                  self.root.update()
+        def update_callback(message):
+            self.log_message(message)
+            self.chromedriver_status_label.config(text=message)
+            self.root.update()
 
-              def force_update_worker():
-                  try:
-                      updater = ChromeDriverUpdater()
-                      success = updater.force_update_chromedriver(update_callback)
+        def force_update_worker():
+            try:
+                updater = ChromeDriverUpdater()
+                success = updater.force_update_chromedriver(update_callback)
 
-                      if success:
-                          self.log_message("✅ ChromeDriver强制更新成功！")
-                          self.chromedriver_status_label.config(text="强制更新成功")
-                          messagebox.showinfo("更新完成",
-                                            "ChromeDriver强制更新成功！\n\n"
-                                            "建议重启程序以确保新版本生效。")
-                      else:
-                          self.log_message("❌ ChromeDriver强制更新失败")
-                          self.chromedriver_status_label.config(text="强制更新失败")
-                          messagebox.showerror("更新失败",
-                                            "ChromeDriver强制更新失败，请检查网络连接或手动下载。")
+                if success:
+                    self.log_message("✅ ChromeDriver强制更新成功！")
+                    self.chromedriver_status_label.config(text="强制更新成功")
+                    messagebox.showinfo("更新完成",
+                                      "ChromeDriver强制更新成功！\n\n"
+                                      "建议重启程序以确保新版本生效。")
+                else:
+                    self.log_message("❌ ChromeDriver强制更新失败")
+                    self.chromedriver_status_label.config(text="强制更新失败")
+                    
+                    # 获取最新版本信息并显示手动下载对话框
+                    try:
+                        latest_info = updater.get_latest_chromedriver_info()
+                        if latest_info:
+                            messagebox.showerror("强制更新失败", 
+                                               "ChromeDriver强制更新失败。\n\n"
+                                               "将显示手动下载说明。")
+                            self.show_manual_download_dialog(latest_info)
+                        else:
+                            messagebox.showerror("强制更新失败",
+                                               "ChromeDriver强制更新失败，请检查网络连接或手动下载。")
+                    except:
+                        messagebox.showerror("强制更新失败",
+                                           "ChromeDriver强制更新失败，请检查网络连接或手动下载。")
 
-                  except Exception as e:
-                      error_msg = f"强制更新时出错: {str(e)}"
-                      self.log_message(error_msg)
-                      self.chromedriver_status_label.config(text="强制更新出错")
-                      messagebox.showerror("更新错误", error_msg)
+            except Exception as e:
+                error_msg = f"强制更新时出错: {str(e)}"
+                self.log_message(error_msg)
+                self.chromedriver_status_label.config(text="强制更新出错")
+                messagebox.showerror("更新错误", error_msg)
 
-              # 在新线程中运行强制更新
-              threading.Thread(target=force_update_worker, daemon=True).start()
+        # 在新线程中运行强制更新
+        threading.Thread(target=force_update_worker, daemon=True).start()
 
     def stop_search(self):
         """停止搜索"""
