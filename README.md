@@ -1,8 +1,247 @@
-# Resards
-微软必应积分自动化
+# Microsoft Rewards 自动化脚本工具
+## 微软积分脚本
+引荐链接：https://rewards.bing.com/welcome?rh=A8FDDB45&ref=rafsrchae
 
-先自己安装Python环境，自己搜教程
+这是一个用于自动化Microsoft Rewards搜索的工具，包含获取cookies和自动搜索功能。
+（移动端搜索暂时失效，PC端正常使用）
 
-然后打开CMD安装selenium库，指令是:pip install selenium以及谷歌浏览器驱动(库安装不上或者安装慢自己找教程,挂代理也行)
+## 功能特点
 
-先运行get_cookie.py手动登录获取cookie，之后只需要每天运行search文件就行
+- 🔐 **自动检测登录状态**: 程序会自动检测登录按钮的变化，无需手动计时
+- 🍪 **智能保存Cookies**: 登录成功后自动保存cookies到文件
+- 🔍 **自动搜索**: 支持桌面端和移动端自动搜索
+- 🎯 **积分任务**: 自动点击积分侧栏中的任务获得积分
+- 📊 **详细日志**: 提供清晰的状态反馈和进度显示
+- 🛡️ **错误处理**: 完善的异常处理和用户友好的错误提示
+
+## 📁 文件说明
+
+### 🔧 核心工具
+- `get_cookie.py`: 智能登录检测工具（获取cookies）
+- `search.py`: 完整自动搜索工具（桌面端+移动端）
+- `desktop_search.py`: 桌面端专用搜索工具
+- `mobile_search.py`: 移动端专用搜索工具
+
+
+### 🛠️ 辅助工具
+- `validate_cookies.py`: Cookies验证工具（诊断cookies问题）
+- `custom_search_terms.py`: 自定义搜索词配置文件
+- `chromedriver.exe`: Chrome浏览器驱动
+- `chromedriver_updater.py`: ChromeDriver自动更新模块
+- `requirements.txt`: Python依赖管理文件
+
+## 使用方法
+
+### 1. 获取Cookies
+
+运行智能登录检测工具：
+
+```bash
+python get_cookie.py
+```
+
+程序会：
+1. 自动打开Chrome浏览器
+2. 访问必应首页
+3. 等待你手动登录Microsoft账户
+4. 智能检测登录状态变化（包括页面跳转）
+5. 登录成功后自动保存cookies到`cookies.txt`文件
+
+**注意**: 
+- 程序会每5秒检查一次登录状态，最多等待5分钟
+- 能够处理登录页面跳转的情况
+- 检测多种登录成功的标志
+
+### 2. 自动搜索
+
+获取cookies后，可以选择以下方式执行搜索：
+
+#### 方式一：完整搜索（桌面端+移动端）
+```bash
+python search.py
+```
+或者使用批处理文件：
+```bash
+search.bat
+```
+
+#### 方式二：分别搜索
+
+**桌面端搜索（30次）：**
+```bash
+python desktop_search.py
+```
+或者：
+```bash
+desktop_search.bat
+```
+
+**移动端搜索（20次）：**
+```bash
+python mobile_search.py
+```
+或者：
+```bash
+mobile_search.bat
+```
+
+#### 方式三：积分任务（GUI版本）
+在GUI版本中，选择"🎯 积分任务"选项，程序会：
+1. 自动访问必应首页
+2. 尝试多种方式查找积分任务：
+   - 直接访问rewards页面
+   - 在必应首页查找积分侧栏
+   - 查找并切换到包含积分任务的iframe
+3. 主要通过`div.point_cont`容器识别积分任务
+4. 识别并点击可获得的积分任务
+5. 自动关闭新打开的标签页
+6. 跳过已完成的任务（通过图标、类名、aria-label判断）
+
+#### 方式四：全部账号任务（GUI版本）
+在GUI版本中，选择"👥 全部账号任务"选项，程序会：
+1. 获取所有已保存的账号
+2. 依次处理每个账号：
+   - 自动切换到当前账号
+   - 执行积分任务
+   - 执行桌面端搜索（30次）
+   - 执行移动端搜索（20次）
+   - 等待3秒后处理下一个账号
+3. 显示每个账号的处理进度和结果
+4. 完成后显示总体统计信息
+
+### 3. 验证Cookies（可选）
+
+如果遇到cookies问题，可以运行验证工具：
+
+```bash
+python validate_cookies.py
+```
+
+### 4. ChromeDriver自动更新（GUI版本）
+
+在GUI版本的"⚙️ 设置"选项卡中，提供了ChromeDriver自动更新功能：
+
+#### 检查更新
+- 点击"🔍 检查ChromeDriver更新"按钮
+- 程序会自动检查当前ChromeDriver版本和最新ChromeDriver版本
+- 显示当前版本和最新版本信息
+
+#### 自动更新
+- 点击"⬇️ 更新ChromeDriver"按钮
+- 程序会自动下载并替换ChromeDriver文件
+- 更新过程中会显示详细进度
+- 更新完成后建议重启程序
+
+**功能特点**：
+- 自动检测系统类型（Windows/Linux/macOS）
+- 获取当前ChromeDriver版本
+- 从官方API获取最新ChromeDriver版本
+- 自动下载并替换ChromeDriver文件
+- 支持版本回滚（更新失败时自动恢复）
+
+### 5. 自定义搜索词（可选）
+
+你可以编辑 `custom_search_terms.py` 文件来自定义搜索词：
+
+```bash
+# 编辑自定义搜索词文件
+notepad custom_search_terms.py
+```
+
+程序会优先使用自定义搜索词，如果没有自定义文件则使用默认搜索词。
+
+
+
+
+
+搜索工具会：
+1. 使用保存的cookies自动登录
+2. 执行桌面端搜索（30次，间隔8秒）- 模拟真实用户输入，使用随机搜索词
+3. 执行移动端搜索（20次，间隔8秒）- 模拟真实用户输入，使用随机搜索词
+4. 自动完成每日搜索任务
+
+## 系统要求
+
+- Python 3.6+
+- Chrome浏览器
+- ChromeDriver（放在当前目录下）
+- requests库（用于ChromeDriver自动更新）
+
+## 依赖安装
+
+```bash
+pip install -r requirements.txt
+```
+
+或者手动安装：
+
+```bash
+pip install selenium
+pip install requests
+```
+
+## 注意事项
+
+1. **首次使用**: 必须先运行`get_cookie.py`获取cookies
+2. **登录状态**: 确保在程序运行期间完成Microsoft账户登录
+3. **网络连接**: 确保网络连接稳定
+4. **ChromeDriver**: 确保当前目录下有chromedriver.exe文件
+5. **自动更新**: GUI版本支持ChromeDriver自动更新功能
+
+## 故障排除
+
+### 常见问题
+
+1. **ChromeDriver错误**
+   - 确保ChromeDriver版本为最新版本
+   - 下载对应版本的ChromeDriver
+
+2. **ChromeDriver版本不兼容**
+   - 下载最新版本的ChromeDriver
+   - 将chromedriver.exe放在当前目录下
+   - 使用GUI版本的"ChromeDriver更新"功能自动更新
+
+3. **登录检测失败**
+   - 检查网络连接
+   - 确保在必应首页进行登录
+   - 尝试刷新页面后重新登录
+
+4. **Cookies加载失败**
+   - 运行 `python validate_cookies.py` 诊断cookies问题
+   - 检查cookies是否过期
+   - 重新运行`get_cookie.py`获取新的cookies
+
+5. **搜索失败**
+   - 检查网络连接
+   - 确保cookies有效
+
+6. **PyInstaller打包问题**
+   - **错误**: `Failed to execute script 'pyiboot01 bootstrap'`
+   - **解决方案**: 
+     - 使用 `python build_simple.py` 进行简单打包
+     - 或使用 `python build_exe_stable.py` 进行稳定打包
+     - 确保Python环境干净，重新安装PyInstaller
+     - 尝试在管理员权限下运行打包脚本
+
+### 日志说明
+
+程序会显示详细的执行日志：
+- ✅ 成功操作
+- ❌ 错误操作
+- ⚠️ 警告信息
+- 📊 统计信息
+
+## 免责声明
+
+本工具仅供学习和研究使用，请遵守Microsoft Rewards的使用条款。使用者需自行承担使用风险。
+
+## 更新日志
+
+### v2.0
+- 添加自动登录状态检测
+- 优化用户界面和日志输出
+- 增强错误处理机制
+- 添加详细的进度显示
+
+
+![meteor-comet's GitHub stats](https://github-readme-stats.vercel.app/api?username=meteor-comet&show_icons=true&theme=radical)
