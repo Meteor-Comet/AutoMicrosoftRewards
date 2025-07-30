@@ -1696,6 +1696,11 @@ class MicrosoftRewardsGUI:
     def load_cookies_worker(self, driver):
         """加载cookies工作函数"""
         try:
+            # 检查当前账号
+            current_account = self.account_manager.get_current_account_name()
+            self.log_message(f"🔍 当前账号: {current_account}")
+            self.log_message(f"📂 从cookies.txt加载cookies")
+            
             with open('cookies.txt', 'r', encoding='utf-8') as f:
                 cookies_list = json.load(f)
             
@@ -1912,9 +1917,12 @@ class MicrosoftRewardsGUI:
     
     def switch_to_account(self, account_name):
         """切换到指定账号"""
+        self.log_message(f"🔄 正在切换到账号: {account_name}")
+        
         # 保存当前cookies（如果有）
         current_account = self.account_manager.get_current_account_name()
         if current_account and os.path.exists("cookies.txt"):
+            self.log_message(f"💾 保存当前账号 {current_account} 的cookies")
             self.account_manager.save_current_cookies(current_account)
         
         # 切换到新账号
@@ -1922,8 +1930,15 @@ class MicrosoftRewardsGUI:
         
         if success:
             self.log_message(f"✅ {message}", "SUCCESS")
+            self.log_message(f"📂 当前cookies文件: {os.path.exists('cookies.txt')}")
+            
+            # 验证切换是否成功
+            new_current_account = self.account_manager.get_current_account_name()
+            self.log_message(f"🔍 切换后当前账号: {new_current_account}")
+            
             self.refresh_account_list()
         else:
+            self.log_message(f"❌ 切换账号失败: {message}", "ERROR")
             messagebox.showerror("错误", message)
     
     def on_account_click(self, event):

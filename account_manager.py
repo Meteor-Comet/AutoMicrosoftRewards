@@ -102,6 +102,7 @@ class AccountManager:
         if os.path.exists(target_cookies):
             try:
                 shutil.copy(target_cookies, "cookies.txt")
+                self.current_account = account_name  # 设置当前账号
             except Exception:
                 return False, "复制cookies文件失败"
         else:
@@ -111,8 +112,7 @@ class AccountManager:
                     os.remove("cookies.txt")
                 except Exception:
                     pass
-        
-        self.current_account = account_name
+            self.current_account = account_name  # 即使没有cookies也要设置当前账号
         
         # 更新最后登录时间
         self.accounts[account_name]["last_login"] = datetime.now().isoformat()
@@ -184,13 +184,34 @@ class AccountManager:
     
     def get_current_account_name(self):
         """获取当前账号名称"""
-        if not self.current_account:
-            # 尝试从cookies文件推断当前账号
-            if os.path.exists("cookies.txt"):
+        # 如果current_account已经设置，直接返回
+        if self.current_account:
+            return self.current_account
+        
+        # 尝试从cookies文件推断当前账号
+        if os.path.exists("cookies.txt"):
+            # 通过比较cookies内容来判断是哪个账号
+            try:
+                with open("cookies.txt", 'r', encoding='utf-8') as f:
+                    current_cookies = json.load(f)
+                
+                # 遍历所有账号，比较cookies内容
                 for account_name, info in self.accounts.items():
-                    if info["cookies_file"] == "cookies.txt":
-                        self.current_account = account_name
-                        break
+                    cookies_file = info["cookies_file"]
+                    if os.path.exists(cookies_file):
+                        try:
+                            with open(cookies_file, 'r', encoding='utf-8') as f:
+                                account_cookies = json.load(f)
+                            
+                            # 如果cookies内容相同，认为是当前账号
+                            if current_cookies == account_cookies:
+                                self.current_account = account_name
+                                break
+                        except Exception:
+                            continue
+            except Exception:
+                pass
+        
         return self.current_account
     
     def has_cookies(self, account_name):
