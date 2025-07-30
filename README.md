@@ -1,4 +1,5 @@
-# Microsoft Rewards 自动化工具
+# Microsoft Rewards 自动化脚本工具
+## 微软积分脚本
 引荐链接：https://rewards.bing.com/welcome?rh=A8FDDB45&ref=rafsrchae
 
 这是一个用于自动化Microsoft Rewards搜索的工具，包含获取cookies和自动搜索功能。
