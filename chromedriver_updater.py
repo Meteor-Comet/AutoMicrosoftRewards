@@ -412,7 +412,7 @@ class ChromeDriverUpdater:
             response = requests.get(self.page_url, headers=headers, timeout=10)
             response.raise_for_status()
             html = response.text
-            print("网页内容:", html)  # 调试用
+            # print("网页内容:", html)  # 调试用
 
             version_match = re.search(r'<h2>Stable</h2>.*?<code>(\d+\.\d+\.\d+\.\d+)</code>', html, re.DOTALL)
             if not version_match:
