@@ -48,7 +48,7 @@ def setup_driver(options=None):
         # 指定当前目录下的chromedriver.exe
         chromedriver_path = "./chromedriver.exe"
         service = Service(executable_path=chromedriver_path)
-        
+
         driver = webdriver.Chrome(service=service, options=options)
         driver.maximize_window()
         return driver
@@ -80,7 +80,7 @@ def load_cookies(driver, filename='cookies.txt'):
         
         # 清除现有cookies
         driver.delete_all_cookies()
-        
+
         # 添加cookies，跳过无效的cookies
         valid_cookies = 0
         invalid_cookies = 0
