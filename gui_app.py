@@ -1186,16 +1186,22 @@ class MicrosoftRewardsGUI:
                     self.log_message("✅ 积分任务完成，继续执行搜索...")
             
             if search_type in ["desktop", "both"]:
-                self.log_message("🖥️ 开始桌面端搜索...")
-                if not self.desktop_search_worker(desktop_count, interval):
-                    self.log_message("❌ 桌面端搜索失败", "ERROR")
-                    return
+                if desktop_count > 0:
+                    self.log_message("🖥️ 开始桌面端搜索...")
+                    if not self.desktop_search_worker(desktop_count, interval):
+                        self.log_message("❌ 桌面端搜索失败", "ERROR")
+                        return
+                else:
+                    self.log_message("🖥️ 桌面端搜索次数为0，跳过桌面端搜索")
             
             if search_type in ["mobile", "both"]:
-                self.log_message("📱 开始移动端搜索...")
-                if not self.mobile_search_worker(mobile_count, interval):
-                    self.log_message("❌ 移动端搜索失败", "ERROR")
-                    return
+                if mobile_count > 0:
+                    self.log_message("📱 开始移动端搜索...")
+                    if not self.mobile_search_worker(mobile_count, interval):
+                        self.log_message("❌ 移动端搜索失败", "ERROR")
+                        return
+                else:
+                    self.log_message("📱 移动端搜索次数为0，跳过移动端搜索")
             
             if search_type == "rewards":
                 self.log_message("🎯 开始积分任务...")
@@ -1791,16 +1797,22 @@ class MicrosoftRewardsGUI:
                         self.log_message(f"✅ 账号 {account_name} 积分任务完成")
                     
                     # 执行桌面端搜索
-                    self.log_message(f"🖥️ 账号 {account_name}: 执行桌面端搜索...")
-                    if not self.desktop_search_worker(desktop_count, interval):
-                        self.log_message(f"❌ 账号 {account_name} 桌面端搜索失败", "ERROR")
-                        continue
+                    if desktop_count > 0:
+                        self.log_message(f"🖥️ 账号 {account_name}: 执行桌面端搜索...")
+                        if not self.desktop_search_worker(desktop_count, interval):
+                            self.log_message(f"❌ 账号 {account_name} 桌面端搜索失败", "ERROR")
+                            continue
+                    else:
+                        self.log_message(f"🖥️ 账号 {account_name}: 桌面端搜索次数为0，跳过")
                     
                     # 执行移动端搜索
-                    self.log_message(f"📱 账号 {account_name}: 执行移动端搜索...")
-                    if not self.mobile_search_worker(mobile_count, interval):
-                        self.log_message(f"❌ 账号 {account_name} 移动端搜索失败", "ERROR")
-                        continue
+                    if mobile_count > 0:
+                        self.log_message(f"📱 账号 {account_name}: 执行移动端搜索...")
+                        if not self.mobile_search_worker(mobile_count, interval):
+                            self.log_message(f"❌ 账号 {account_name} 移动端搜索失败", "ERROR")
+                            continue
+                    else:
+                        self.log_message(f"📱 账号 {account_name}: 移动端搜索次数为0，跳过")
                     
                     self.log_message(f"✅ 账号 {account_name} 完整搜索任务完成")
                     completed_accounts += 1
