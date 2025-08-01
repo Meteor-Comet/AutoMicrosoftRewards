@@ -111,6 +111,7 @@
   ('concurrent.futures.thread',
    'F:\\python\\Lib\\concurrent\\futures\\thread.py',
    'PYMODULE'),
+  ('config_manager', 'D:\\MicrosoftRewards\\config_manager.py', 'PYMODULE'),
   ('contextlib', 'F:\\python\\Lib\\contextlib.py', 'PYMODULE'),
   ('contextvars', 'F:\\python\\Lib\\contextvars.py', 'PYMODULE'),
   ('copy', 'F:\\python\\Lib\\copy.py', 'PYMODULE'),
