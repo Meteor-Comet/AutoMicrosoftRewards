@@ -226,7 +226,7 @@ class MicrosoftRewardsGUI:
         info_frame.pack(fill='x')
         
         # 左侧：版本信息
-        version_label = ttk.Label(info_frame, text="Microsoft Rewards 自动化工具 v2.2", 
+        version_label = ttk.Label(info_frame, text="Microsoft Rewards 自动化工具 v2.3", 
                                  font=('Arial', 9), foreground='gray')
         version_label.pack(side='left')
         
