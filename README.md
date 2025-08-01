@@ -1,247 +1,198 @@
-# Microsoft Rewards 自动化脚本工具
-## 微软积分脚本
-引荐链接：https://rewards.bing.com/welcome?rh=A8FDDB45&ref=rafsrchae
+# Microsoft Rewards 自动化工具
 
-这是一个用于自动化Microsoft Rewards搜索的工具，包含获取cookies和自动搜索功能。
-（移动端搜索暂时失效，PC端正常使用）
+一个用于自动化Microsoft Rewards搜索和积分任务的Python工具，支持图形化界面。
 
-## 功能特点
+## ✨ 主要功能
 
-- 🔐 **自动检测登录状态**: 程序会自动检测登录按钮的变化，无需手动计时
-- 🍪 **智能保存Cookies**: 登录成功后自动保存cookies到文件
-- 🔍 **自动搜索**: 支持桌面端和移动端自动搜索
-- 🎯 **积分任务**: 自动点击积分侧栏中的任务获得积分
-- 📊 **详细日志**: 提供清晰的状态反馈和进度显示
-- 🛡️ **错误处理**: 完善的异常处理和用户友好的错误提示
+### 🔍 自动搜索
+- **桌面端搜索**: 自动执行桌面端Bing搜索
+- **移动端搜索**: 自动执行移动端Bing搜索  
+- **完整搜索**: 同时执行桌面端和移动端搜索
+- **积分任务**: 自动点击Microsoft Rewards侧栏任务
+- **全部账号任务**: 为所有保存的账号自动执行完整任务流程
+
+### 👥 多账号管理
+- **账号切换**: 支持多个Microsoft账号的切换
+- **Cookie管理**: 自动保存和加载每个账号的cookies
+- **账号验证**: 验证cookies是否有效
+- **批量操作**: 为所有账号批量执行任务
+
+### ⚙️ 设置管理
+- **搜索参数**: 可自定义搜索间隔和次数
+- **设置保存**: 自动保存搜索设置，下次打开时自动恢复
+- **窗口位置**: 记住窗口位置和大小
+- **账号记忆**: 记住上次使用的账号
+
+### 🔧 系统工具
+- **ChromeDriver更新**: 自动检查并更新ChromeDriver版本
+- **手动下载**: 提供手动下载链接和详细说明
+- **文件检查**: 检查必要文件是否存在
+- **Cookie验证**: 验证cookies有效性
+
+## 🚀 快速开始
+
+### 系统要求
+- Windows 10/11
+- Python 3.7+
+- Google Chrome浏览器
+- ChromeDriver (程序会自动下载)
+
+### 安装步骤
+
+1. **下载程序**
+   ```
+   下载 gui_app.py 和所有相关文件
+   ```
+
+2. **安装依赖**
+   ```bash
+   pip install -r requirements_gui.txt
+   ```
+
+3. **运行程序**
+   ```bash
+   python gui_app.py
+   ```
+
+## 📖 使用说明
+
+### 首次使用
+
+1. **登录账号**
+   - 点击"🔑 登录"选项卡
+   - 点击"🚀 开始登录"按钮
+   - 在打开的浏览器中完成Microsoft账号登录
+   - 登录成功后程序会自动保存cookies
+
+2. **配置搜索参数**
+   - 在"🔍 自动搜索"选项卡中设置搜索参数
+   - 搜索间隔: 建议8-10秒
+   - 桌面端搜索次数: 默认30次
+   - 移动端搜索次数: 默认20次
+   - 点击"💾 保存设置"保存配置
+
+3. **开始搜索**
+   - 选择搜索类型
+   - 点击"🚀 开始搜索"按钮
+   - 程序会自动执行搜索任务
+
+### 多账号使用
+
+1. **添加账号**
+   - 点击"👥 账号管理"选项卡
+   - 点击"➕ 添加账号"按钮
+   - 输入账号名称并登录
+
+2. **切换账号**
+   - 在账号列表中双击账号名称
+   - 或点击"🔄 切换账号"按钮选择
+
+3. **批量任务**
+   - 选择"👥 全部账号任务"
+   - 程序会依次为所有账号执行完整任务
+
+### 设置管理
+
+程序会自动保存以下设置：
+- **搜索参数**: 间隔时间、搜索次数、搜索类型
+- **窗口位置**: 程序窗口的位置和大小
+- **当前账号**: 上次使用的账号
+- **自动保存**: 登录时自动保存cookies
+
+设置保存在 `config.json` 文件中，程序启动时会自动加载。
+
+### ChromeDriver更新
+
+1. **自动更新**
+   - 在"⚙️ 设置"选项卡中点击"🔄 检查更新"
+   - 如果发现新版本，点击"⬇️ 更新ChromeDriver"
+
+2. **手动更新**
+   - 如果自动更新失败，会显示手动下载对话框
+   - 点击"复制下载链接"获取下载地址
+   - 下载并解压到程序目录
 
 ## 📁 文件说明
 
-### 🔧 核心工具
-- `get_cookie.py`: 智能登录检测工具（获取cookies）
-- `search.py`: 完整自动搜索工具（桌面端+移动端）
-- `desktop_search.py`: 桌面端专用搜索工具
-- `mobile_search.py`: 移动端专用搜索工具
+### 核心文件
+- `gui_app.py`: 主程序文件
+- `config_manager.py`: 配置管理模块
+- `account_manager.py`: 账号管理模块
+- `chromedriver_updater.py`: ChromeDriver更新模块
 
+### 配置文件
+- `config.json`: 程序配置文件（自动生成）
+- `cookies.txt`: 当前账号的cookies文件
+- `accounts/`: 账号cookies存储目录
 
-### 🛠️ 辅助工具
-- `validate_cookies.py`: Cookies验证工具（诊断cookies问题）
-- `custom_search_terms.py`: 自定义搜索词配置文件
-- `chromedriver.exe`: Chrome浏览器驱动
-- `chromedriver_updater.py`: ChromeDriver自动更新模块
-- `requirements.txt`: Python依赖管理文件
+### 依赖文件
+- `requirements_gui.txt`: GUI版本依赖列表
+- `custom_search_terms.py`: 自定义搜索词
 
-## 使用方法
+## 🔧 高级功能
 
-### 1. 获取Cookies
-
-运行智能登录检测工具：
-
-```bash
-python get_cookie.py
+### 自定义搜索词
+编辑 `custom_search_terms.py` 文件来自定义搜索词：
+```python
+RANDOM_SEARCH_TERMS = [
+    "Python编程",
+    "人工智能",
+    "机器学习",
+    # 添加更多搜索词...
+]
 ```
 
-程序会：
-1. 自动打开Chrome浏览器
-2. 访问必应首页
-3. 等待你手动登录Microsoft账户
-4. 智能检测登录状态变化（包括页面跳转）
-5. 登录成功后自动保存cookies到`cookies.txt`文件
-
-**注意**: 
-- 程序会每5秒检查一次登录状态，最多等待5分钟
-- 能够处理登录页面跳转的情况
-- 检测多种登录成功的标志
-
-### 2. 自动搜索
-
-获取cookies后，可以选择以下方式执行搜索：
-
-#### 方式一：完整搜索（桌面端+移动端）
+### 命令行模式
+程序也支持命令行模式：
 ```bash
-python search.py
-```
-或者使用批处理文件：
-```bash
-search.bat
+python search.py  # 执行搜索
+python get_cookie.py  # 获取cookies
 ```
 
-#### 方式二：分别搜索
-
-**桌面端搜索（30次）：**
-```bash
-python desktop_search.py
-```
-或者：
-```bash
-desktop_search.bat
-```
-
-**移动端搜索（20次）：**
-```bash
-python mobile_search.py
-```
-或者：
-```bash
-mobile_search.bat
-```
-
-#### 方式三：积分任务（GUI版本）
-在GUI版本中，选择"🎯 积分任务"选项，程序会：
-1. 自动访问必应首页
-2. 尝试多种方式查找积分任务：
-   - 直接访问rewards页面
-   - 在必应首页查找积分侧栏
-   - 查找并切换到包含积分任务的iframe
-3. 主要通过`div.point_cont`容器识别积分任务
-4. 识别并点击可获得的积分任务
-5. 自动关闭新打开的标签页
-6. 跳过已完成的任务（通过图标、类名、aria-label判断）
-
-#### 方式四：全部账号任务（GUI版本）
-在GUI版本中，选择"👥 全部账号任务"选项，程序会：
-1. 获取所有已保存的账号
-2. 依次处理每个账号：
-   - 自动切换到当前账号
-   - 执行积分任务
-   - 执行桌面端搜索（30次）
-   - 执行移动端搜索（20次）
-   - 等待3秒后处理下一个账号
-3. 显示每个账号的处理进度和结果
-4. 完成后显示总体统计信息
-
-### 3. 验证Cookies（可选）
-
-如果遇到cookies问题，可以运行验证工具：
-
-```bash
-python validate_cookies.py
-```
-
-### 4. ChromeDriver自动更新（GUI版本）
-
-在GUI版本的"⚙️ 设置"选项卡中，提供了ChromeDriver自动更新功能：
-
-#### 检查更新
-- 点击"🔍 检查ChromeDriver更新"按钮
-- 程序会自动检查当前ChromeDriver版本和最新ChromeDriver版本
-- 显示当前版本和最新版本信息
-
-#### 自动更新
-- 点击"⬇️ 更新ChromeDriver"按钮
-- 程序会自动下载并替换ChromeDriver文件
-- 更新过程中会显示详细进度
-- 更新完成后建议重启程序
-
-**功能特点**：
-- 自动检测系统类型（Windows/Linux/macOS）
-- 获取当前ChromeDriver版本
-- 从官方API获取最新ChromeDriver版本
-- 自动下载并替换ChromeDriver文件
-- 支持版本回滚（更新失败时自动恢复）
-
-### 5. 自定义搜索词（可选）
-
-你可以编辑 `custom_search_terms.py` 文件来自定义搜索词：
-
-```bash
-# 编辑自定义搜索词文件
-notepad custom_search_terms.py
-```
-
-程序会优先使用自定义搜索词，如果没有自定义文件则使用默认搜索词。
-
-
-
-
-
-搜索工具会：
-1. 使用保存的cookies自动登录
-2. 执行桌面端搜索（30次，间隔8秒）- 模拟真实用户输入，使用随机搜索词
-3. 执行移动端搜索（20次，间隔8秒）- 模拟真实用户输入，使用随机搜索词
-4. 自动完成每日搜索任务
-
-## 系统要求
-
-- Python 3.6+
-- Chrome浏览器
-- ChromeDriver（放在当前目录下）
-- requests库（用于ChromeDriver自动更新）
-
-## 依赖安装
-
-```bash
-pip install -r requirements.txt
-```
-
-或者手动安装：
-
-```bash
-pip install selenium
-pip install requests
-```
-
-## 注意事项
-
-1. **首次使用**: 必须先运行`get_cookie.py`获取cookies
-2. **登录状态**: 确保在程序运行期间完成Microsoft账户登录
-3. **网络连接**: 确保网络连接稳定
-4. **ChromeDriver**: 确保当前目录下有chromedriver.exe文件
-5. **自动更新**: GUI版本支持ChromeDriver自动更新功能
-
-## 故障排除
+## 🛠️ 故障排除
 
 ### 常见问题
 
-1. **ChromeDriver错误**
-   - 确保ChromeDriver版本为最新版本
-   - 下载对应版本的ChromeDriver
+1. **ChromeDriver版本不匹配**
+   - 使用程序内置的更新功能
+   - 或手动下载对应版本的ChromeDriver
 
-2. **ChromeDriver版本不兼容**
-   - 下载最新版本的ChromeDriver
-   - 将chromedriver.exe放在当前目录下
-   - 使用GUI版本的"ChromeDriver更新"功能自动更新
+2. **Cookies过期**
+   - 程序会自动检测并提示重新登录
+   - 或手动删除cookies文件重新登录
 
-3. **登录检测失败**
+3. **搜索失败**
    - 检查网络连接
-   - 确保在必应首页进行登录
-   - 尝试刷新页面后重新登录
+   - 确认cookies是否有效
+   - 尝试增加搜索间隔时间
 
-4. **Cookies加载失败**
-   - 运行 `python validate_cookies.py` 诊断cookies问题
-   - 检查cookies是否过期
-   - 重新运行`get_cookie.py`获取新的cookies
+4. **程序无法启动**
+   - 检查Python版本（需要3.7+）
+   - 确认所有依赖已安装
+   - 检查ChromeDriver是否存在
 
-5. **搜索失败**
-   - 检查网络连接
-   - 确保cookies有效
+### 日志查看
+程序运行日志会显示在"📋 日志"选项卡中，包含详细的操作信息和错误提示。
 
-6. **PyInstaller打包问题**
-   - **错误**: `Failed to execute script 'pyiboot01 bootstrap'`
-   - **解决方案**: 
-     - 使用 `python build_simple.py` 进行简单打包
-     - 或使用 `python build_exe_stable.py` 进行稳定打包
-     - 确保Python环境干净，重新安装PyInstaller
-     - 尝试在管理员权限下运行打包脚本
+## 📝 更新日志
 
-### 日志说明
+### v2.0.0
+- ✅ 新增图形化界面
+- ✅ 新增多账号管理功能
+- ✅ 新增ChromeDriver自动更新
+- ✅ 新增设置保存和恢复功能
+- ✅ 新增积分任务自动化
+- ✅ 新增全部账号批量任务
 
-程序会显示详细的执行日志：
-- ✅ 成功操作
-- ❌ 错误操作
-- ⚠️ 警告信息
-- 📊 统计信息
+### v1.0.0
+- ✅ 基础搜索功能
+- ✅ Cookie管理
+- ✅ 命令行界面
 
-## 免责声明
+## 🤝 贡献
 
-本工具仅供学习和研究使用，请遵守Microsoft Rewards的使用条款。使用者需自行承担使用风险。
+欢迎提交Issue和Pull Request来改进这个项目！
 
-## 更新日志
+## 📄 许可证
 
-### v2.0
-- 添加自动登录状态检测
-- 优化用户界面和日志输出
-- 增强错误处理机制
-- 添加详细的进度显示
-
-
-![meteor-comet's GitHub stats](https://github-readme-stats.vercel.app/api?username=meteor-comet&show_icons=true&theme=radical)
+本项目仅供学习和个人使用，请遵守Microsoft Rewards的使用条款。

@@ -12,24 +12,29 @@ import os
 import random
 import sys
 from datetime import datetime
+import webbrowser
 
-from selenium import webdriver
-from selenium.webdriver.common.by import By
-from selenium.webdriver.support.ui import WebDriverWait
-from selenium.webdriver.support import expected_conditions as EC
-from selenium.common.exceptions import TimeoutException, NoSuchElementException
-from selenium.webdriver.chrome.service import Service
-from selenium.webdriver.common.keys import Keys
+# 尝试导入可选模块
+try:
+    from account_manager import AccountManager
+    ACCOUNT_MANAGER_AVAILABLE = True
+except ImportError:
+    ACCOUNT_MANAGER_AVAILABLE = False
+    print("警告: account_manager 模块不可用")
 
-# 导入账号管理模块
-from account_manager import AccountManager
-
-# 导入ChromeDriver更新模块
 try:
     from chromedriver_updater import ChromeDriverUpdater
     CHROMEDRIVER_UPDATER_AVAILABLE = True
 except ImportError:
     CHROMEDRIVER_UPDATER_AVAILABLE = False
+    print("警告: chromedriver_updater 模块不可用")
+
+try:
+    from config_manager import ConfigManager
+    CONFIG_MANAGER_AVAILABLE = True
+except ImportError:
+    CONFIG_MANAGER_AVAILABLE = False
+    print("警告: config_manager 模块不可用")
 
 # 尝试导入自定义搜索词，如果没有则使用默认列表
 try:
@@ -54,35 +59,121 @@ class MicrosoftRewardsGUI:
     def __init__(self, root):
         self.root = root
         self.root.title("Microsoft Rewards 自动化工具")
-        self.root.geometry("900x750")
-        self.root.resizable(True, True)
+        self.root.geometry("800x600")
         
-        # 设置图标和样式
-        self.setup_styles()
+        # 初始化配置管理器
+        if CONFIG_MANAGER_AVAILABLE:
+            self.config_manager = ConfigManager()
+        else:
+            self.config_manager = None
         
         # 初始化账号管理器
-        self.account_manager = AccountManager()
+        if ACCOUNT_MANAGER_AVAILABLE:
+            self.account_manager = AccountManager()
+        else:
+            self.account_manager = None
         
-        # 创建主框架
+        # 设置样式
+        self.setup_styles()
+        
+        # 创建界面
         self.create_widgets()
         
-        # 初始化变量
-        self.driver = None
-        self.is_running = False
-        self.current_task = None
+        # 加载保存的设置
+        self.load_saved_settings()
         
+        # 搜索状态
+        self.is_running = False
+    
     def setup_styles(self):
         """设置界面样式"""
         style = ttk.Style()
+        
+        # 配置主题
         style.theme_use('clam')
         
-        # 配置样式
-        style.configure('Title.TLabel', font=('Arial', 16, 'bold'))
-        style.configure('Header.TLabel', font=('Arial', 12, 'bold'))
-        style.configure('Success.TLabel', foreground='green')
-        style.configure('Error.TLabel', foreground='red')
-        style.configure('Warning.TLabel', foreground='orange')
+        # 配置按钮样式
+        style.configure('Accent.TButton', 
+                       background='#0078d4', 
+                       foreground='white',
+                       font=('Arial', 9, 'bold'))
         
+        # 配置标签样式
+        style.configure('Title.TLabel', 
+                       font=('Arial', 12, 'bold'),
+                       foreground='#0078d4')
+        
+        # 配置进度条样式
+        style.configure("Horizontal.TProgressbar", 
+                       background='#0078d4',
+                       troughcolor='#f0f0f0')
+
+    def load_saved_settings(self):
+        """加载保存的设置"""
+        if not self.config_manager:
+            return
+        
+        try:
+            # 加载搜索设置
+            search_settings = self.config_manager.get_search_settings()
+            
+            # 设置搜索参数
+            if hasattr(self, 'interval_var'):
+                self.interval_var.set(search_settings.get('interval', '8'))
+            if hasattr(self, 'desktop_count_var'):
+                self.desktop_count_var.set(search_settings.get('desktop_count', '30'))
+            if hasattr(self, 'mobile_count_var'):
+                self.mobile_count_var.set(search_settings.get('mobile_count', '20'))
+            if hasattr(self, 'search_type'):
+                self.search_type.set(search_settings.get('search_type', 'both'))
+            
+            # 加载窗口几何信息
+            geometry = self.config_manager.get_window_geometry()
+            if geometry:
+                self.root.geometry(geometry)
+            
+            # 加载上次使用的账号
+            last_account = self.config_manager.get_last_account()
+            if last_account and self.account_manager:
+                # 尝试切换到上次使用的账号
+                try:
+                    self.account_manager.switch_to_account(last_account)
+                    self.log_message(f"已切换到上次使用的账号: {last_account}")
+                except:
+                    pass
+            
+            self.log_message("✅ 已加载保存的设置")
+            
+        except Exception as e:
+            self.log_message(f"❌ 加载设置时出错: {str(e)}")
+
+    def save_current_settings(self):
+        """保存当前设置"""
+        if not self.config_manager:
+            return False
+        
+        try:
+            # 保存搜索设置
+            interval = self.interval_var.get() if hasattr(self, 'interval_var') else '8'
+            desktop_count = self.desktop_count_var.get() if hasattr(self, 'desktop_count_var') else '30'
+            mobile_count = self.mobile_count_var.get() if hasattr(self, 'mobile_count_var') else '20'
+            search_type = self.search_type.get() if hasattr(self, 'search_type') else 'both'
+            
+            success = self.config_manager.save_search_settings(
+                interval, desktop_count, mobile_count, search_type
+            )
+            
+            if success:
+                self.log_message("✅ 设置已保存")
+                return True
+            else:
+                self.log_message("❌ 保存设置失败")
+                return False
+                
+        except Exception as e:
+            self.log_message(f"❌ 保存设置时出错: {str(e)}")
+            return False
+    
     def create_widgets(self):
         """创建界面组件"""
         # 主标题
@@ -242,6 +333,14 @@ class MicrosoftRewardsGUI:
         self.mobile_count_var = tk.StringVar(value="20")
         mobile_count_entry = ttk.Entry(count_frame, textvariable=self.mobile_count_var, width=10)
         mobile_count_entry.pack(side='left', padx=5)
+        
+        # 设置保存按钮
+        settings_frame = ttk.Frame(params_frame)
+        settings_frame.pack(fill='x', pady=(10,0))
+        
+        self.save_settings_button = ttk.Button(settings_frame, text="💾 保存设置", 
+                                             command=self.save_current_settings)
+        self.save_settings_button.pack(side='left')
         
         # 搜索按钮
         button_frame = ttk.Frame(search_frame)
@@ -714,33 +813,39 @@ class MicrosoftRewardsGUI:
     def start_search(self):
         """开始搜索"""
         if self.is_running:
+            messagebox.showwarning("警告", "搜索正在进行中，请先停止当前搜索")
             return
         
-        # 检查cookies
-        if not os.path.exists("cookies.txt"):
-            self.handle_no_cookies()
-            return
+        # 自动保存当前设置
+        self.save_current_settings()
         
-        # 验证cookies是否有效
+        # 验证cookies
         if not self.validate_current_cookies():
-            self.handle_invalid_cookies()
             return
         
+        # 获取搜索参数
+        try:
+            interval = int(self.interval_var.get())
+            desktop_count = int(self.desktop_count_var.get())
+            mobile_count = int(self.mobile_count_var.get())
+            search_type = self.search_type.get()
+        except ValueError:
+            messagebox.showerror("错误", "请输入有效的数字")
+            return
+        
+        if interval < 1 or desktop_count < 1 or mobile_count < 1:
+            messagebox.showerror("错误", "搜索间隔和次数必须大于0")
+            return
+        
+        # 开始搜索
         self.is_running = True
         self.search_button.config(state='disabled')
         self.stop_search_button.config(state='normal')
         
-        # 获取搜索参数
-        search_type = self.search_type.get()
-        interval = int(self.interval_var.get())
-        desktop_count = int(self.desktop_count_var.get())
-        mobile_count = int(self.mobile_count_var.get())
-        
-        # 在新线程中执行搜索
-        self.search_thread = threading.Thread(target=self.search_worker, 
-                                           args=(search_type, interval, desktop_count, mobile_count))
-        self.search_thread.daemon = True
-        self.search_thread.start()
+        # 在新线程中运行搜索
+        threading.Thread(target=self.search_worker, 
+                       args=(search_type, interval, desktop_count, mobile_count),
+                       daemon=True).start()
     
     def validate_current_cookies(self):
         """验证当前cookies是否有效"""
@@ -1943,29 +2048,27 @@ class MicrosoftRewardsGUI:
     
     def switch_to_account(self, account_name):
         """切换到指定账号"""
-        self.log_message(f"🔄 正在切换到账号: {account_name}")
+        if not self.account_manager:
+            self.log_message("❌ 账号管理模块不可用")
+            return False
         
-        # 保存当前cookies（如果有）
-        current_account = self.account_manager.get_current_account_name()
-        if current_account and os.path.exists("cookies.txt"):
-            self.log_message(f"💾 保存当前账号 {current_account} 的cookies")
-            self.account_manager.save_current_cookies(current_account)
-        
-        # 切换到新账号
-        success, message = self.account_manager.switch_account(account_name)
-        
-        if success:
-            self.log_message(f"✅ {message}", "SUCCESS")
-            self.log_message(f"📂 当前cookies文件: {os.path.exists('cookies.txt')}")
-            
-            # 验证切换是否成功
-            new_current_account = self.account_manager.get_current_account_name()
-            self.log_message(f"🔍 切换后当前账号: {new_current_account}")
-            
-            self.refresh_account_list()
-        else:
-            self.log_message(f"❌ 切换账号失败: {message}", "ERROR")
-            messagebox.showerror("错误", message)
+        try:
+            success, message = self.account_manager.switch_to_account(account_name)
+            if success:
+                self.log_message(f"✅ 已切换到账号: {account_name}")
+                self.refresh_account_list()
+                
+                # 保存当前账号到配置
+                if self.config_manager:
+                    self.config_manager.save_last_account(account_name)
+                
+                return True
+            else:
+                self.log_message(f"❌ 切换账号失败: {message}")
+                return False
+        except Exception as e:
+            self.log_message(f"❌ 切换账号时出错: {str(e)}")
+            return False
     
     def on_account_click(self, event):
         """账号点击事件"""
@@ -2297,8 +2400,14 @@ def main():
             if app.is_running:
                 if messagebox.askokcancel("退出", "程序正在运行中，确定要退出吗？"):
                     app.is_running = False
+                    # 保存窗口几何信息
+                    if app.config_manager:
+                        app.config_manager.save_window_geometry(root.geometry())
                     root.destroy()
             else:
+                # 保存窗口几何信息
+                if app.config_manager:
+                    app.config_manager.save_window_geometry(root.geometry())
                 root.destroy()
         
         root.protocol("WM_DELETE_WINDOW", on_closing)
@@ -2308,16 +2417,16 @@ def main():
     except Exception as e:
         # 如果GUI启动失败，显示错误信息
         import traceback
-        error_msg = f"程序启动失败:\n{str(e)}\n\n详细错误信息:\n{traceback.format_exc()}"
+        error_msg = f"程序启动失败: {str(e)}\n\n详细错误信息:\n{traceback.format_exc()}"
+        print(error_msg)
         
+        # 尝试显示错误对话框
         try:
-            # 尝试显示错误对话框
-            messagebox.showerror("启动错误", error_msg)
+            import tkinter.messagebox as msgbox
+            msgbox.showerror("启动错误", error_msg)
         except:
-            # 如果连错误对话框都无法显示，写入文件
-            with open("error_log.txt", "w", encoding="utf-8") as f:
-                f.write(error_msg)
-            print(error_msg)
+            print("无法显示错误对话框")
+            input("按回车键退出...")
 
 if __name__ == "__main__":
     main() 
