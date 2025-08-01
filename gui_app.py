@@ -13,6 +13,10 @@ import random
 import sys
 from datetime import datetime
 import webbrowser
+from selenium import webdriver
+from selenium.webdriver.common.by import By
+from selenium.webdriver.common.keys import Keys
+from selenium.webdriver.chrome.service import Service
 
 # 尝试导入可选模块
 try:
@@ -845,7 +849,7 @@ class MicrosoftRewardsGUI:
             messagebox.showerror("错误", "请输入有效的数字")
             return
         
-        if interval < 1 or desktop_count < 1 or mobile_count < 1:
+        if interval < 1 and desktop_count < 1 and mobile_count < 1:
             messagebox.showerror("错误", "搜索间隔和次数必须大于0")
             return
         
