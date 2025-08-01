@@ -137,10 +137,13 @@ class MicrosoftRewardsGUI:
             if last_account and self.account_manager:
                 # 尝试切换到上次使用的账号
                 try:
-                    self.account_manager.switch_to_account(last_account)
-                    self.log_message(f"已切换到上次使用的账号: {last_account}")
-                except:
-                    pass
+                    success, message = self.account_manager.switch_account(last_account)
+                    if success:
+                        self.log_message(f"已切换到上次使用的账号: {last_account}")
+                    else:
+                        self.log_message(f"切换账号失败: {message}")
+                except Exception as e:
+                    self.log_message(f"切换账号时出错: {str(e)}")
             
             self.log_message("✅ 已加载保存的设置")
             
@@ -333,6 +336,15 @@ class MicrosoftRewardsGUI:
         self.mobile_count_var = tk.StringVar(value="20")
         mobile_count_entry = ttk.Entry(count_frame, textvariable=self.mobile_count_var, width=10)
         mobile_count_entry.pack(side='left', padx=5)
+        
+        # 绑定自动保存事件
+        def auto_save_settings(*args):
+            self.save_current_settings()
+        
+        self.interval_var.trace('w', auto_save_settings)
+        self.desktop_count_var.trace('w', auto_save_settings)
+        self.mobile_count_var.trace('w', auto_save_settings)
+        self.search_type.trace('w', auto_save_settings)
         
         # 设置保存按钮
         settings_frame = ttk.Frame(params_frame)
@@ -2065,7 +2077,7 @@ class MicrosoftRewardsGUI:
             return False
         
         try:
-            success, message = self.account_manager.switch_to_account(account_name)
+            success, message = self.account_manager.switch_account(account_name)
             if success:
                 self.log_message(f"✅ 已切换到账号: {account_name}")
                 self.refresh_account_list()
@@ -2412,13 +2424,15 @@ def main():
             if app.is_running:
                 if messagebox.askokcancel("退出", "程序正在运行中，确定要退出吗？"):
                     app.is_running = False
-                    # 保存窗口几何信息
+                    # 保存设置和窗口几何信息
                     if app.config_manager:
+                        app.save_current_settings()
                         app.config_manager.save_window_geometry(root.geometry())
                     root.destroy()
             else:
-                # 保存窗口几何信息
+                # 保存设置和窗口几何信息
                 if app.config_manager:
+                    app.save_current_settings()
                     app.config_manager.save_window_geometry(root.geometry())
                 root.destroy()
         
