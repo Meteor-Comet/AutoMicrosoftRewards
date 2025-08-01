@@ -1,4 +1,5 @@
 # Microsoft Rewards 自动化工具
+（目前模拟移动端搜索无法获得积分，搜索次数调成0）
 
 一个用于自动化Microsoft Rewards搜索和积分任务的Python工具，支持图形化界面。
 
