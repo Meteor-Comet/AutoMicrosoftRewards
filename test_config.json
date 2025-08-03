@@ -1,0 +1,11 @@
+{
+  "search_settings": {
+    "interval": "10",
+    "desktop_count": "25",
+    "mobile_count": "15",
+    "search_type": "both"
+  },
+  "last_account": "test_account",
+  "window_geometry": "800x600+100+100",
+  "auto_save_cookies": true
+}
