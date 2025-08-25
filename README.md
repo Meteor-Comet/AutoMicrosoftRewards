@@ -1,8 +1,8 @@
 # Microsoft Rewards 自动化工具
 
 一个用于自动化Microsoft Rewards搜索和积分任务的Python工具，支持图形化界面，兼容Chrome和Edge浏览器。
+<br>
 在Release下载压缩包解压即可使用
-
 ## ✨ 主要功能
 
 ### 🔍 自动搜索
