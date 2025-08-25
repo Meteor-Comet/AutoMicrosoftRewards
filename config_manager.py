@@ -15,7 +15,8 @@ class ConfigManager:
                 "interval": "8",
                 "desktop_count": "30",
                 "mobile_count": "20",
-                "search_type": "both"
+                "search_type": "both",
+                "browser": "chrome"
             },
             "last_account": "",
             "window_geometry": "",
@@ -61,13 +62,14 @@ class ConfigManager:
         """获取搜索设置"""
         return self.config.get("search_settings", self.default_config["search_settings"])
     
-    def save_search_settings(self, interval, desktop_count, mobile_count, search_type):
+    def save_search_settings(self, interval, desktop_count, mobile_count, search_type, browser="chrome"):
         """保存搜索设置"""
         self.config["search_settings"] = {
             "interval": str(interval),
             "desktop_count": str(desktop_count),
             "mobile_count": str(mobile_count),
-            "search_type": search_type
+            "search_type": search_type,
+            "browser": browser
         }
         return self.save_config()
     

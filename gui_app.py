@@ -16,7 +16,8 @@ import webbrowser
 from selenium import webdriver
 from selenium.webdriver.common.by import By
 from selenium.webdriver.common.keys import Keys
-from selenium.webdriver.chrome.service import Service
+from selenium.webdriver.chrome.service import Service as ChromeService
+from selenium.webdriver.edge.service import Service as EdgeService
 
 # 尝试导入可选模块
 try:
@@ -149,6 +150,11 @@ class MicrosoftRewardsGUI:
                 except Exception as e:
                     self.log_message(f"切换账号时出错: {str(e)}")
             
+            # 加载浏览器选择
+            if hasattr(self, 'browser_var'):
+                browser_setting = search_settings.get('browser', 'chrome')
+                self.browser_var.set(browser_setting)
+            
             self.log_message("✅ 已加载保存的设置")
             
         except Exception as e:
@@ -165,9 +171,10 @@ class MicrosoftRewardsGUI:
             desktop_count = self.desktop_count_var.get() if hasattr(self, 'desktop_count_var') else '30'
             mobile_count = self.mobile_count_var.get() if hasattr(self, 'mobile_count_var') else '20'
             search_type = self.search_type.get() if hasattr(self, 'search_type') else 'both'
+            browser = self.browser_var.get() if hasattr(self, 'browser_var') else 'chrome'
             
             success = self.config_manager.save_search_settings(
-                interval, desktop_count, mobile_count, search_type
+                interval, desktop_count, mobile_count, search_type, browser
             )
             
             if success:
@@ -180,6 +187,93 @@ class MicrosoftRewardsGUI:
         except Exception as e:
             self.log_message(f"❌ 保存设置时出错: {str(e)}")
             return False
+    
+    def on_browser_change(self, *args):
+        """浏览器选择变化时的处理"""
+        browser = self.browser_var.get()
+        self.log_message(f"🌐 已选择浏览器: {browser.upper()}")
+        
+        # 保存浏览器选择到配置
+        if self.config_manager:
+            try:
+                # 获取当前搜索设置并更新浏览器选择
+                search_settings = self.config_manager.get_search_settings()
+                interval = search_settings.get('interval', '8')
+                desktop_count = search_settings.get('desktop_count', '30')
+                mobile_count = search_settings.get('mobile_count', '20')
+                search_type = search_settings.get('search_type', 'both')
+                
+                self.config_manager.save_search_settings(
+                    interval, desktop_count, mobile_count, search_type, browser
+                )
+                self.log_message(f"✅ 浏览器选择已保存: {browser.upper()}")
+            except Exception as e:
+                self.log_message(f"❌ 保存浏览器选择时出错: {str(e)}")
+    
+    def setup_driver(self, mobile_emulation=False):
+        """统一的驱动设置函数"""
+        browser = self.browser_var.get()
+        
+        try:
+            if browser == "chrome":
+                # Chrome浏览器设置
+                options = webdriver.ChromeOptions()
+                options.add_argument("--no-sandbox")
+                options.add_argument("--disable-dev-shm-usage")
+                options.add_argument("--disable-blink-features=AutomationControlled")
+                options.add_experimental_option("excludeSwitches", ["enable-automation"])
+                options.add_experimental_option('useAutomationExtension', False)
+                options.add_argument("--mute-audio")
+                options.add_argument("--log-level=3")
+                options.add_argument("--silent")
+                
+                if mobile_emulation:
+                    options.add_experimental_option('mobileEmulation', {'deviceName': 'Galaxy S5'})
+                
+                # 检查ChromeDriver是否存在
+                chromedriver_path = "./chromedriver.exe"
+                if not os.path.exists(chromedriver_path):
+                    raise FileNotFoundError(f"ChromeDriver不存在: {chromedriver_path}")
+                
+                service = ChromeService(executable_path=chromedriver_path)
+                driver = webdriver.Chrome(service=service, options=options)
+                
+            elif browser == "edge":
+                # Edge浏览器设置
+                options = webdriver.EdgeOptions()
+                options.add_argument("--no-sandbox")
+                options.add_argument("--disable-dev-shm-usage")
+                options.add_argument("--disable-blink-features=AutomationControlled")
+                options.add_experimental_option("excludeSwitches", ["enable-automation"])
+                options.add_experimental_option('useAutomationExtension', False)
+                options.add_argument("--mute-audio")
+                options.add_argument("--log-level=3")
+                options.add_argument("--silent")
+                
+                if mobile_emulation:
+                    options.add_experimental_option('mobileEmulation', {'deviceName': 'Galaxy S5'})
+                
+                # 检查EdgeDriver是否存在
+                edgedriver_path = "./msedgedriver.exe"
+                if not os.path.exists(edgedriver_path):
+                    raise FileNotFoundError(f"EdgeDriver不存在: {edgedriver_path}")
+                
+                service = EdgeService(executable_path=edgedriver_path)
+                driver = webdriver.Edge(service=service, options=options)
+                
+            else:
+                raise ValueError(f"不支持的浏览器类型: {browser}")
+            
+            # 通用设置
+            driver.execute_script("Object.defineProperty(navigator, 'webdriver', {get: () => undefined})")
+            if not mobile_emulation:
+                driver.maximize_window()
+            
+            return driver
+            
+        except Exception as e:
+            self.log_message(f"❌ 初始化{browser.upper()}浏览器失败: {str(e)}", "ERROR")
+            raise
     
     def create_widgets(self):
         """创建界面组件"""
@@ -436,6 +530,23 @@ class MicrosoftRewardsGUI:
                                                      command=self.validate_all_cookies)
         self.validate_all_cookies_button.pack(side='left', padx=5)
         
+        # 浏览器选择
+        browser_frame = ttk.LabelFrame(settings_frame, text="浏览器选择", padding=10)
+        browser_frame.pack(fill='x', padx=10, pady=5)
+        
+        browser_label = ttk.Label(browser_frame, text="选择浏览器:")
+        browser_label.pack(side='left', padx=5)
+        
+        self.browser_var = tk.StringVar(value="chrome")
+        chrome_radio = ttk.Radiobutton(browser_frame, text="Chrome", variable=self.browser_var, value="chrome")
+        chrome_radio.pack(side='left', padx=5)
+        
+        edge_radio = ttk.Radiobutton(browser_frame, text="Edge", variable=self.browser_var, value="edge")
+        edge_radio.pack(side='left', padx=5)
+        
+        # 绑定浏览器选择变化事件
+        self.browser_var.trace('w', self.on_browser_change)
+        
         # ChromeDriver更新
         chromedriver_frame = ttk.LabelFrame(settings_frame, text="ChromeDriver更新", padding=10)
         chromedriver_frame.pack(fill='x', padx=10, pady=5)
@@ -681,22 +792,8 @@ class MicrosoftRewardsGUI:
             self.log_message("🚀 开始登录流程...")
             self.update_status("正在初始化浏览器...")
             
-            # 设置Chrome选项
-            options = webdriver.ChromeOptions()
-            options.add_argument("--no-sandbox")
-            options.add_argument("--disable-dev-shm-usage")
-            options.add_argument("--disable-blink-features=AutomationControlled")
-            options.add_experimental_option("excludeSwitches", ["enable-automation"])
-            options.add_experimental_option('useAutomationExtension', False)
-            options.add_argument("--mute-audio")
-            
-            # 初始化驱动
-            chromedriver_path = "./chromedriver.exe"
-            service = Service(executable_path=chromedriver_path)
-            
-            self.driver = webdriver.Chrome(service=service, options=options)
-            self.driver.execute_script("Object.defineProperty(navigator, 'webdriver', {get: () => undefined})")
-            self.driver.maximize_window()
+            # 使用统一的驱动设置函数
+            self.driver = self.setup_driver()
             
             self.log_message("✅ 浏览器初始化成功", "SUCCESS")
             self.update_status("正在访问必应...")
@@ -1244,25 +1341,8 @@ class MicrosoftRewardsGUI:
     def desktop_search_worker(self, count, interval):
         """桌面端搜索工作函数"""
         try:
-            # 设置Chrome选项
-            options = webdriver.ChromeOptions()
-            options.add_argument("--no-sandbox")
-            options.add_argument("--disable-dev-shm-usage")
-            options.add_argument("--disable-blink-features=AutomationControlled")
-            options.add_experimental_option("excludeSwitches", ["enable-automation"])
-            options.add_experimental_option('useAutomationExtension', False)
-            options.add_argument("--mute-audio")
-            # 禁用日志输出
-            options.add_argument("--log-level=3")
-            options.add_argument("--silent")
-            
-            # 初始化驱动
-            chromedriver_path = "./chromedriver.exe"
-            service = Service(executable_path=chromedriver_path)
-            
-            driver = webdriver.Chrome(service=service, options=options)
-            driver.execute_script("Object.defineProperty(navigator, 'webdriver', {get: () => undefined})")
-            driver.maximize_window()
+            # 使用统一的驱动设置函数
+            driver = self.setup_driver()
             
             # 加载cookies
             if not self.load_cookies_worker(driver):
@@ -1304,25 +1384,8 @@ class MicrosoftRewardsGUI:
     def mobile_search_worker(self, count, interval):
         """移动端搜索工作函数"""
         try:
-            # 设置移动端Chrome选项
-            options = webdriver.ChromeOptions()
-            options.add_experimental_option('mobileEmulation', {'deviceName': 'Galaxy S5'})
-            options.add_argument("--mute-audio")
-            options.add_argument("--no-sandbox")
-            options.add_argument("--disable-dev-shm-usage")
-            options.add_argument("--disable-blink-features=AutomationControlled")
-            options.add_experimental_option("excludeSwitches", ["enable-automation"])
-            options.add_experimental_option('useAutomationExtension', False)
-            # 禁用日志输出
-            options.add_argument("--log-level=3")
-            options.add_argument("--silent")
-            
-            # 初始化驱动
-            chromedriver_path = "./chromedriver.exe"
-            service = Service(executable_path=chromedriver_path)
-            
-            driver = webdriver.Chrome(service=service, options=options)
-            driver.execute_script("Object.defineProperty(navigator, 'webdriver', {get: () => undefined})")
+            # 使用统一的驱动设置函数（移动端模式）
+            driver = self.setup_driver(mobile_emulation=True)
             
             # 加载cookies
             if not self.load_cookies_worker(driver):
@@ -1364,25 +1427,8 @@ class MicrosoftRewardsGUI:
     def rewards_task_worker(self):
         """积分任务工作函数"""
         try:
-            # 设置Chrome选项
-            options = webdriver.ChromeOptions()
-            options.add_argument("--no-sandbox")
-            options.add_argument("--disable-dev-shm-usage")
-            options.add_argument("--disable-blink-features=AutomationControlled")
-            options.add_experimental_option("excludeSwitches", ["enable-automation"])
-            options.add_experimental_option('useAutomationExtension', False)
-            options.add_argument("--mute-audio")
-            # 禁用日志输出
-            options.add_argument("--log-level=3")
-            options.add_argument("--silent")
-            
-            # 初始化驱动
-            chromedriver_path = "./chromedriver.exe"
-            service = Service(executable_path=chromedriver_path)
-            
-            driver = webdriver.Chrome(service=service, options=options)
-            driver.execute_script("Object.defineProperty(navigator, 'webdriver', {get: () => undefined})")
-            driver.maximize_window()
+            # 使用统一的驱动设置函数
+            driver = self.setup_driver()
             
             # 加载cookies
             if not self.load_cookies_worker(driver):

@@ -1,11 +1,12 @@
 {
   "search_settings": {
-    "interval": "8",
+    "interval": "60",
     "desktop_count": "10",
     "mobile_count": "0",
-    "search_type": "both"
+    "search_type": "desktop",
+    "browser": "edge"
   },
   "last_account": "",
-  "window_geometry": "800x600+544+74",
+  "window_geometry": "800x600+509+121",
   "auto_save_cookies": true
 }
